@@ -6,7 +6,7 @@ import { ConfidenceBadge, DivergenceBadge } from "./Badges";
 import PlatformBreakdown from "./PlatformBreakdown";
 import ThresholdList from "./ThresholdList";
 
-export default function ForecastCard({ forecast }: { forecast: AggregateForecast }) {
+export default function ForecastCard({ asset, forecast }: { asset: string; forecast: AggregateForecast }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -31,6 +31,7 @@ export default function ForecastCard({ forecast }: { forecast: AggregateForecast
       </div>
 
       <ProbabilityChart
+        asset={asset}
         gridEdges={forecast.grid_edges}
         pdf={forecast.pdf}
         mean={forecast.mean}
@@ -47,7 +48,7 @@ export default function ForecastCard({ forecast }: { forecast: AggregateForecast
       {expanded && (
         <div className="card-details">
           <PlatformBreakdown sources={forecast.sources} />
-          <ThresholdList thresholds={forecast.thresholds} />
+          <ThresholdList asset={asset} thresholds={forecast.thresholds} />
         </div>
       )}
     </div>

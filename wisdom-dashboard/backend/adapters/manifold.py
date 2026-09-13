@@ -39,6 +39,15 @@ than silently:
      series the way Polymarket/Kalshi are. That may change as new markets
      get created; the discovery query itself doesn't hardcode any specific
      market.
+
+Covers BTC and crude oil (WTI) -- see ASSET_SEARCH_TERMS below for how a
+new asset gets added. Oil's search terms currently only turn up
+touch-style "highest/lowest price this year" MULTI_NUMERIC markets
+(confirmed live 2026-09-13, e.g. "What will be the highest price of crude
+oil in 2026?"), which the existing `shouldAnswersSumToOne` check already
+correctly excludes (those markets have independent, not partitioned,
+answers -- shouldAnswersSumToOne is False) -- so oil currently has no live
+Manifold contribution, same non-issue as its dormant near-term BTC series.
 """
 from __future__ import annotations
 
@@ -54,6 +63,14 @@ MANIFOLD_BASE = "https://api.manifold.markets/v0"
 
 PLAY_MONEY_WEIGHT_DISCOUNT = 0.10
 MIN_VOLUME_MANA = 50.0
+
+# Per-asset full-text search terms tried against Manifold's search API. Add
+# a row here (plus, if new, an AssetSpec entry in common/assets.py) to
+# cover a new asset -- nothing else in this file is asset-specific.
+ASSET_SEARCH_TERMS = {
+    "BTC": ["bitcoin", "btc"],
+    "OIL": ["crude oil", "wti oil", "oil price"],
+}
 
 # User-generated titles aren't consistently formatted -- confirmed live,
 # all of these appear across different markets: "Below $116,000" / "Under
@@ -93,10 +110,11 @@ class ManifoldAdapter(SourceAdapter):
     source_type = "prediction_market"
 
     def fetch(self, asset: str) -> SourceFetchResult:
-        if asset != "BTC":
+        terms = ASSET_SEARCH_TERMS.get(asset)
+        if terms is None:
             return SourceFetchResult(source_name=self.name, source_type=self.source_type)
         try:
-            slugs = self._discover_slugs()
+            slugs = self._discover_slugs(terms)
         except Exception as exc:  # noqa: BLE001
             return SourceFetchResult(source_name=self.name, source_type=self.source_type, error=f"discovery failed: {exc}")
 
@@ -105,7 +123,7 @@ class ManifoldAdapter(SourceAdapter):
         fetched_at = datetime.now(timezone.utc).isoformat()
 
         with ThreadPoolExecutor(max_workers=6) as pool:
-            futures = {pool.submit(self._fetch_market, slug): slug for slug in slugs}
+            futures = {pool.submit(self._fetch_market, asset, slug): slug for slug in slugs}
             for fut in as_completed(futures):
                 slug = futures[fut]
                 try:
@@ -124,9 +142,9 @@ class ManifoldAdapter(SourceAdapter):
             error="; ".join(errors) if errors and not distributions else None,
         )
 
-    def _discover_slugs(self) -> list[str]:
+    def _discover_slugs(self, terms: list[str]) -> list[str]:
         slugs: dict[str, bool] = {}
-        for term in ("bitcoin", "btc"):
+        for term in terms:
             results = get_json(
                 f"{MANIFOLD_BASE}/search-markets",
                 {"term": term, "filter": "open", "sort": "close-date", "limit": 100},
@@ -146,7 +164,7 @@ class ManifoldAdapter(SourceAdapter):
                     slugs[slug] = True
         return list(slugs.keys())
 
-    def _fetch_market(self, slug: str) -> PriceDistribution | None:
+    def _fetch_market(self, asset: str, slug: str) -> PriceDistribution | None:
         m = get_json(f"{MANIFOLD_BASE}/slug/{slug}")
         if not m.get("shouldAnswersSumToOne"):
             return None
@@ -166,7 +184,7 @@ class ManifoldAdapter(SourceAdapter):
 
         volume = float(m.get("volume") or 0.0)
         return PriceDistribution(
-            asset="BTC",
+            asset=asset,
             source_type=self.source_type,
             source_name=self.name,
             target_date=target_dt.date(),

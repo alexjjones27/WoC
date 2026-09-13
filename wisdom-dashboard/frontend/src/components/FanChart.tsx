@@ -71,7 +71,7 @@ function niceTicks(lo: number, hi: number, count: number): number[] {
   return out;
 }
 
-export default function FanChart({ history, forecasts }: { history: SpotHistoryPoint[]; forecasts: AggregateForecast[] }) {
+export default function FanChart({ asset, history, forecasts }: { asset: string; history: SpotHistoryPoint[]; forecasts: AggregateForecast[] }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverT, setHoverT] = useState<number | null>(null);
 
@@ -134,7 +134,7 @@ export default function FanChart({ history, forecasts }: { history: SpotHistoryP
 
   return (
     <div className="fanchart-wrap">
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="fanchart-svg" role="img" aria-label="BTC price history and forward confidence cone">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="fanchart-svg" role="img" aria-label={`${asset} price history and forward confidence cone`}>
         {/* y gridlines + labels */}
         {priceTicks.map((p) => (
           <g key={p}>

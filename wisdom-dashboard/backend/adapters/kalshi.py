@@ -1,27 +1,24 @@
-"""Kalshi adapter (Phase 1, live).
+"""Kalshi adapter (Phase 1, live). Covers BTC and crude oil (WTI) -- see
+ASSET_SERIES below for how a new asset gets added.
 
-Two series are used, both confirmed live (2026-09-13) to be genuine
-point-in-time price distributions -- "what will price BE at this exact
-timestamp" -- as opposed to a touch/range-within-period product:
+Per asset, two series are used, both genuine point-in-time price
+distributions -- "what will price BE at this exact timestamp" -- as
+opposed to a touch/range-within-period product:
 
-  KXBTCD ("Bitcoin price on <date> at <time>?"): a ladder of binary
-  "price > $strike" markets, ~$100 apart, all sharing one close time (one
-  `event_ticker` = one ladder = one point in time). GET
+  A daily/near-term THRESHOLD LADDER (BTC: KXBTCD, OIL: KXWTI): binary
+  "price > $strike" markets, all sharing one close time (one `event_ticker`
+  = one ladder = one point in time). Confirmed live (2026-09-13):
   /trade-api/v2/markets?event_ticker=KXBTCD-26SEP1313 returns 188 strikes
-  from $67,600 to $86,300 with a clean, monotonically-decreasing
-  "P(price > strike)" (yes_bid/yes_ask) as strike increases -- a real CDF
-  ladder, unlike Polymarket's pre-bucketed ranges. We turn it into a PDF by
-  differencing consecutive strikes' implied P(price > strike). Near-dated
-  only: currently open ladders span at most a few days out.
+  with a clean, monotonically-decreasing "P(price > strike)" as strike
+  increases -- a real CDF ladder. Turned into a PDF by differencing
+  consecutive strikes. Near-dated only: currently open ladders span at
+  most a few days out.
 
-  KXBTCY ("Bitcoin price at the end of <year>"): pre-bucketed ranges
-  (`strike_type` "less"/"between"/"greater", e.g. "60,000 to 64,999.99"),
-  same shape as Polymarket's range events -- each bucket's Yes price *is*
-  its probability directly, no differencing needed. This is the one
-  far-horizon point either platform currently offers with real
-  point-in-time semantics: as of 2026-09-13 there is exactly one open
-  KXBTCY event, resolving Jan 1, 2027 (i.e. "end of this year"), $25M+
-  combined volume across 28 buckets from <$20k to >$150k.
+  A farther-dated pre-bucketed RANGE event (BTC: KXBTCY "price at the end
+  of <year>", OIL: KXWTIW "price on <date>" -- weekly cadence for oil,
+  confirmed live): `strike_type` "less"/"between"/"greater" buckets, same
+  shape as Polymarket's range events -- each bucket's Yes price *is* its
+  probability directly, no differencing needed.
 
 No auth is required for either series' public GET endpoints (confirmed
 live).
@@ -37,40 +34,31 @@ work this sits alongside):
     (heavy size stacked at the ask pulls the estimate toward the bid, since
     that's the side more likely to get run through). Falls back to plain
     midpoint when depth data isn't available.
-  - ISOTONIC REGRESSION on the KXBTCD ladder specifically: P(price>strike)
+  - ISOTONIC REGRESSION on the ladder series specifically: P(price>strike)
     must be non-increasing in strike, but adjacent live quotes can violate
-    that from ordinary bid/ask noise. Previously this adapter just clipped
-    each negative difference to 0 locally; it now fits the closest
-    monotone curve to the WHOLE ladder at once (weighted by each strike's
-    own depth/spread-derived confidence) via ../../isotonic.py before
-    differencing -- see that module's docstring for why this is better
-    than local clipping.
+    that from ordinary bid/ask noise. Fits the closest monotone curve to
+    the WHOLE ladder at once (weighted by each strike's own depth/spread-
+    derived confidence) via ../../isotonic.py before differencing.
 
-Excluded from `fetch()` (the point-in-time pipeline): KXBTCMAXM/KXBTCMAXQ
-("how high will Bitcoin get this month/quarter" -- a one-touch max within
-the period) and KXBTCMINY/KXBTCMAXY ("will Bitcoin be above/below $X by
-[date]" -- a touch-before-expiry ladder, not a price-at-expiry read). Same
-reasoning as polymarket.py: only same-semantics ("price at a fixed date")
-sources go into `fetch()`'s point-in-time aggregate.
+Excluded from `fetch()` (the point-in-time pipeline): monthly/quarterly
+one-touch-max series (BTC: KXBTCMAXM/KXBTCMAXQ; OIL: has no currently-open
+equivalent) and the touch-before-expiry ladders (BTC: KXBTCMAXY/KXBTCMINY;
+OIL: KXWTIMAX/KXWTIMIN, confirmed live: "Will the maximum/minimum WTI
+front month settle price reach $X by [date]" -- literal touch semantics).
+Only same-semantics ("price at a fixed date") sources go into `fetch()`'s
+point-in-time aggregate.
 
-KXBTCMAXY (touch above) and KXBTCMINY (touch below) ARE used, but
-separately, via `fetch_touch()` -- never merged into `fetch()`'s output.
-Confirmed live (2026-09-13): both are flat lists of "Will Bitcoin be
-above/below $X by [date]" markets (`strike_type` "greater"/"less"), no
-event-ticker ladder-grouping needed since each market already carries its
-own strike and shares one close date (2027-01-01, same as KXBTCY's -- these
-three series describe the same year-end horizon from three different
-angles: price-at-expiry, touch-above, touch-below).
+The touch-above/touch-below series ARE used, but separately, via
+`fetch_touch()` -- never merged into `fetch()`'s output.
 
 Two-step fetch per series, matching Kalshi's own API shape:
   1. GET /events?series_ticker=<X>&status=open -- cheap, no nested
      strikes, just tells us which close times currently have an open market.
   2. GET /markets?event_ticker=<ticker> -- the full ladder/bucket set for
      one close time.
-KXBTCD opens on a rolling, not-strictly-daily basis (observed: 2 open
-"today" plus 1 several days out, not one per day) -- so, like Polymarket,
-this adapter reports whatever's currently live rather than a fixed
-calendar grid. Where more than one KXBTCD ladder closes on the same
+These series open on a rolling, not-strictly-daily basis -- so, like
+Polymarket, this adapter reports whatever's currently live rather than a
+fixed calendar grid. Where more than one ladder closes on the same
 calendar date, only the latest close time for that date is kept
 (documented simplification: avoids silently blending an early-afternoon
 and an end-of-day forecast for the same "period" into one number).
@@ -93,10 +81,24 @@ from common.distribution import (
 from isotonic import isotonic_nonincreasing
 
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
-LADDER_SERIES_TICKER = "KXBTCD"
-RANGE_SERIES_TICKER = "KXBTCY"
-TOUCH_ABOVE_SERIES_TICKER = "KXBTCMAXY"
-TOUCH_BELOW_SERIES_TICKER = "KXBTCMINY"
+
+# Per-asset series tickers. Add a row here (plus, if the asset needs it, an
+# AssetSpec entry in common/assets.py) to cover a new asset -- nothing else
+# in this file is asset-specific.
+ASSET_SERIES = {
+    "BTC": {
+        "ladder": "KXBTCD",
+        "range": "KXBTCY",
+        "touch_above": "KXBTCMAXY",
+        "touch_below": "KXBTCMINY",
+    },
+    "OIL": {
+        "ladder": "KXWTI",
+        "range": "KXWTIW",
+        "touch_above": "KXWTIMAX",
+        "touch_below": "KXWTIMIN",
+    },
+}
 
 
 def _period_label(dt: datetime) -> str:
@@ -151,7 +153,8 @@ class KalshiAdapter(SourceAdapter):
     source_type = "prediction_market"
 
     def fetch(self, asset: str) -> SourceFetchResult:
-        if asset != "BTC":
+        cfg = ASSET_SERIES.get(asset)
+        if cfg is None:
             return SourceFetchResult(source_name=self.name, source_type=self.source_type)
 
         # (event_ticker, close_iso, which parser) for every currently-open
@@ -159,15 +162,15 @@ class KalshiAdapter(SourceAdapter):
         jobs: list[tuple[str, str, str]] = []
         errors: list[str] = []
         try:
-            for ticker, close_iso in self._discover_latest_per_date(LADDER_SERIES_TICKER).values():
+            for ticker, close_iso in self._discover_latest_per_date(cfg["ladder"]).values():
                 jobs.append((ticker, close_iso, "ladder"))
         except Exception as exc:  # noqa: BLE001
-            errors.append(f"{LADDER_SERIES_TICKER} discovery failed: {exc}")
+            errors.append(f"{cfg['ladder']} discovery failed: {exc}")
         try:
-            for ticker, close_iso in self._discover_latest_per_date(RANGE_SERIES_TICKER).values():
+            for ticker, close_iso in self._discover_latest_per_date(cfg["range"]).values():
                 jobs.append((ticker, close_iso, "range"))
         except Exception as exc:  # noqa: BLE001
-            errors.append(f"{RANGE_SERIES_TICKER} discovery failed: {exc}")
+            errors.append(f"{cfg['range']} discovery failed: {exc}")
 
         if not jobs and errors:
             return SourceFetchResult(source_name=self.name, source_type=self.source_type, error="; ".join(errors))
@@ -177,7 +180,7 @@ class KalshiAdapter(SourceAdapter):
 
         with ThreadPoolExecutor(max_workers=6) as pool:
             futures = {
-                pool.submit(self._fetch_ladder if kind == "ladder" else self._fetch_range, ticker, close_iso): ticker
+                pool.submit(self._fetch_ladder if kind == "ladder" else self._fetch_range, asset, cfg, ticker, close_iso): ticker
                 for ticker, close_iso, kind in jobs
             }
             for fut in as_completed(futures):
@@ -222,12 +225,13 @@ class KalshiAdapter(SourceAdapter):
                 break
         return latest
 
-    def _fetch_ladder(self, event_ticker: str, close_iso: str) -> PriceDistribution | None:
-        """KXBTCD: a threshold ladder ('price > $strike'). Each strike's
-        probability is a depth/spread microprice (_market_price_and_weight);
-        the whole P(>strike) sequence is then fit to the closest monotone
-        (non-increasing) curve via isotonic regression BEFORE differencing
-        into bucket probabilities -- see module docstring."""
+    def _fetch_ladder(self, asset: str, cfg: dict, event_ticker: str, close_iso: str) -> PriceDistribution | None:
+        """The ladder series: a threshold ladder ('price > $strike'). Each
+        strike's probability is a depth/spread microprice
+        (_market_price_and_weight); the whole P(>strike) sequence is then
+        fit to the closest monotone (non-increasing) curve via isotonic
+        regression BEFORE differencing into bucket probabilities -- see
+        module docstring."""
         page = get_json(f"{KALSHI_BASE}/markets", {"event_ticker": event_ticker, "limit": 1000})
         markets = page.get("markets", [])
         rungs = []
@@ -254,17 +258,18 @@ class KalshiAdapter(SourceAdapter):
         buckets.append(PriceBucket(low=strikes[-1], high=None, prob=max(0.0, smoothed[-1]), label=f">{strikes[-1]:,.0f}"))
 
         return self._finalize(
-            buckets, [(r[0], r[1], r[3]) for r in rungs], close_iso,
-            source_url=f"https://kalshi.com/markets/{LADDER_SERIES_TICKER.lower()}",
+            asset, buckets, [(r[0], r[1], r[3]) for r in rungs], close_iso,
+            source_url=f"https://kalshi.com/markets/{cfg['ladder'].lower()}",
             raw_note=(
                 "Threshold ladder ('price > $strike'); each strike priced by depth/spread microprice, fit to a "
                 "monotone curve via isotonic regression, then differenced into bucket probabilities."
             ),
         )
 
-    def _fetch_range(self, event_ticker: str, close_iso: str) -> PriceDistribution | None:
-        """KXBTCY: pre-bucketed mutually-exclusive ranges (like Polymarket's
-        range events) -- each bucket's Yes price is its probability directly."""
+    def _fetch_range(self, asset: str, cfg: dict, event_ticker: str, close_iso: str) -> PriceDistribution | None:
+        """The range series: pre-bucketed mutually-exclusive ranges (like
+        Polymarket's range events) -- each bucket's Yes price is its
+        probability directly."""
         page = get_json(f"{KALSHI_BASE}/markets", {"event_ticker": event_ticker, "limit": 1000})
         markets = page.get("markets", [])
         buckets: list[PriceBucket] = []
@@ -290,12 +295,12 @@ class KalshiAdapter(SourceAdapter):
             return None
 
         return self._finalize(
-            buckets, rungs, close_iso,
-            source_url=f"https://kalshi.com/markets/{RANGE_SERIES_TICKER.lower()}",
+            asset, buckets, rungs, close_iso,
+            source_url=f"https://kalshi.com/markets/{cfg['range'].lower()}",
             raw_note="Pre-bucketed mutually-exclusive price range; bucket Yes-price = bucket probability directly.",
         )
 
-    def _finalize(self, buckets: list[PriceBucket], rungs: list, close_iso: str, source_url: str, raw_note: str) -> PriceDistribution | None:
+    def _finalize(self, asset: str, buckets: list[PriceBucket], rungs: list, close_iso: str, source_url: str, raw_note: str) -> PriceDistribution | None:
         total = sum(b.prob for b in buckets)
         if total <= 0:
             return None
@@ -311,7 +316,7 @@ class KalshiAdapter(SourceAdapter):
 
         target_dt = datetime.fromisoformat(close_iso.replace("Z", "+00:00"))
         return PriceDistribution(
-            asset="BTC",
+            asset=asset,
             source_type=self.source_type,
             source_name=self.name,
             target_date=target_dt.date(),
@@ -327,12 +332,13 @@ class KalshiAdapter(SourceAdapter):
         )
 
     def fetch_touch(self, asset: str) -> TouchFetchResult:
-        if asset != "BTC":
+        cfg = ASSET_SERIES.get(asset)
+        if cfg is None:
             return TouchFetchResult(source_name=self.name)
         errors: list[str] = []
         thresholds: list[TouchThreshold] = []
         expiry: str | None = None
-        for series, direction in ((TOUCH_ABOVE_SERIES_TICKER, "above"), (TOUCH_BELOW_SERIES_TICKER, "below")):
+        for series, direction in ((cfg["touch_above"], "above"), (cfg["touch_below"], "below")):
             try:
                 page = get_json(f"{KALSHI_BASE}/markets", {"series_ticker": series, "status": "open", "limit": 100})
             except Exception as exc:  # noqa: BLE001
@@ -355,14 +361,14 @@ class KalshiAdapter(SourceAdapter):
         thresholds.sort(key=lambda t: (t.direction, t.price))
         target_dt = datetime.fromisoformat((expiry or "").replace("Z", "+00:00"))
         touch = TouchForecast(
-            asset="BTC",
+            asset=asset,
             source_name=self.name,
             expiry_date=target_dt.date(),
             period_label=_period_label(target_dt),
             thresholds=thresholds,
             total_volume=sum(t.volume or 0.0 for t in thresholds),
-            source_url=f"https://kalshi.com/markets/{TOUCH_ABOVE_SERIES_TICKER.lower()}",
-            raw_note="Touch probability: chance BTC crosses this price at ANY point before expiry, not price-at-expiry.",
+            source_url=f"https://kalshi.com/markets/{cfg['touch_above'].lower()}",
+            raw_note=f"Touch probability: chance {asset} crosses this price at ANY point before expiry, not price-at-expiry.",
             resolve_datetime_utc=expiry,
         )
         return TouchFetchResult(source_name=self.name, touches=[touch], error="; ".join(errors) if errors else None)

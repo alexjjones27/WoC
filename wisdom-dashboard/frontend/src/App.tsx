@@ -80,10 +80,10 @@ export default function App() {
       {data && (data.spot_history.length > 0 || data.forecasts.length > 0) && (
         <section className="fanchart-section">
           <div className="fanchart-section-header">
-            <h2>Price &amp; forward confidence cone</h2>
+            <h2>{data.display_name} price &amp; forward confidence cone</h2>
             <p>Actual price leading up to now, then the aggregate forecast's median and nested confidence bands going forward.</p>
           </div>
-          <FanChart history={data.spot_history} forecasts={data.forecasts} />
+          <FanChart asset={data.asset} history={data.spot_history} forecasts={data.forecasts} />
         </section>
       )}
 
@@ -92,7 +92,7 @@ export default function App() {
           <div className="empty-state">No active markets found for {symbol} right now.</div>
         )}
         {data?.forecasts.map((f) => (
-          <ForecastCard key={f.target_date} forecast={f} />
+          <ForecastCard key={f.target_date} asset={data.asset} forecast={f} />
         ))}
       </main>
 
@@ -105,7 +105,7 @@ export default function App() {
           ))}
         </div>
       )}
-      {data && <TouchSection groups={data.touch_forecasts} />}
+      {data && <TouchSection asset={data.asset} groups={data.touch_forecasts} />}
     </div>
   );
 }

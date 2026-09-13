@@ -33,6 +33,12 @@ ASSET_REGISTRY: dict[str, AssetSpec] = {
         adapters=["polymarket", "kalshi", "manifold", "deribit_options", "perp_futures"],
         enabled=True,
     ),
+    "OIL": AssetSpec(
+        symbol="OIL",
+        display_name="Crude Oil (WTI)",
+        adapters=["polymarket", "kalshi", "manifold", "deribit_options", "perp_futures"],
+        enabled=True,
+    ),
     # Not wired up yet -- listed to show how a new asset is added once its
     # adapters exist. Equities/commodities would mostly reuse the Phase 2/3
     # options and futures adapters (different underlying symbol mapping);

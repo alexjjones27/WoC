@@ -4,14 +4,52 @@ A dashboard that pulls forward-looking price information from multiple
 market-based sources and aggregates it into one probabilistic forecast per
 asset per future date.
 
-**Phase 1 (built, live):** Bitcoin, via Polymarket and Kalshi prediction
-markets.
+**Phase 1 (built, live):** Bitcoin and Crude Oil (WTI), via Polymarket,
+Kalshi, and Manifold prediction markets.
 **Phase 2/3 (designed, not wired up):** options-implied distributions
 (Deribit) and futures/perpetual curves. The adapter interface and
 aggregation engine already support them; only the actual data-fetching
 logic is unwritten. See `backend/adapters/deribit_options.py` and
 `backend/adapters/perp_futures.py` for exactly what's missing and how it
 would be implemented.
+
+### Adding crude oil: what changed, and what oil currently lacks
+
+Each Phase 1 adapter used to hardcode Bitcoin's title patterns/series
+tickers; they're now keyed by a per-asset config dict at the top of each
+file (`ASSET_SERIES` in `kalshi.py`, `ASSET_CONFIG` in `polymarket.py`,
+`ASSET_SEARCH_TERMS` in `manifold.py`) -- adding a new asset to an
+already-integrated platform means adding one row to that dict, not writing
+a new file. Verified live per platform (2026-09-13) before adding OIL:
+
+- **Kalshi** has a real oil analog to every BTC series used here (`KXWTI`
+  daily ladder, `KXWTIW` weekly range, `KXWTIMAX`/`KXWTIMIN` touch) --
+  currently the *only* point-in-time oil source.
+- **Polymarket** has no "WTI price on `<date>`" range-bucket family --
+  every WTI event found is touch-style ("What will WTI Crude Oil (WTI) hit
+  ...?"), so it contributes to the touch-probability section only, not
+  `fetch()`'s point-in-time pipeline.
+- **Manifold**'s oil search results are all touch-style "highest/lowest
+  price this year" markets, which the adapter's existing
+  `shouldAnswersSumToOne` check already correctly excludes -- no live
+  Manifold contribution for oil right now, same as BTC's occasional dormant
+  series.
+- **No historical "actual price" line yet for oil's fan chart.**
+  `backend/spot_price.py` only maps BTC to a CoinGecko coin id (CoinGecko
+  is crypto-only) -- oil's fan chart currently shows the forward cone with
+  no historical line, which the frontend already handles gracefully rather
+  than breaking. A real fix means a second spot-price source (e.g. a
+  commodities feed) added to `spot_price.py`, not wired up here.
+
+Generalizing this fix surfaced a real pre-existing bug, not just new code:
+Polymarket's old single-touch-event BTC discovery returned on its *first*
+regex match and silently dropped the other 3 real "what price will Bitcoin
+hit" events (weekly/monthly/daily variants) that were sitting right next to
+the one it kept. Oil needing to discover two touch events (not one) forced
+discovery to return a list instead of one slug, which fixed BTC's touch
+section too -- it was undercounting before. See `polymarket.py` and
+`aggregation.py`'s `build_touch_groups` (which also needed a same-source-
+same-date dedup once more than one event could come from one platform).
 
 ## Run it
 
@@ -298,11 +336,27 @@ all already treat every adapter identically.
 
 ## Adding a new asset (ticker)
 
-Add an `AssetSpec` entry to `ASSET_REGISTRY` in `backend/common/assets.py`
-with `enabled=True` and the list of adapters that cover it. It'll appear in
-the dashboard's asset selector automatically. (`AAPL`/`GOLD` are already
-listed there, disabled, to show the shape -- they need the Phase 2/3
-adapters actually built first.)
+Two steps, since covering a new asset on an already-integrated platform
+(Polymarket/Kalshi/Manifold) means extending that adapter's per-asset
+config, not writing a new file (see "Adding crude oil" above for exactly
+what that looked like going from BTC-only to BTC+OIL):
+
+1. Add a row for the new asset to each relevant adapter's per-asset config
+   (`ASSET_SERIES` in `kalshi.py`, `ASSET_CONFIG` in `polymarket.py`,
+   `ASSET_SEARCH_TERMS` in `manifold.py`) -- but verify live first what
+   that platform actually offers for this asset (point-in-time range/ladder
+   family? touch-only? nothing?) rather than assuming it mirrors BTC/OIL;
+   set the missing pieces to `None`/omit them the way `polymarket.py` does
+   for OIL's point-in-time series.
+2. Add an `AssetSpec` entry to `ASSET_REGISTRY` in `backend/common/assets.py`
+   with `enabled=True` and the list of adapters that cover it. It'll appear
+   in the dashboard's asset selector automatically. (`AAPL`/`GOLD` are
+   still listed there, disabled, to show the shape for an asset that needs
+   the Phase 2/3 options/futures adapters actually built first -- neither
+   has a prediction-market angle the way BTC/OIL do.)
+
+The frontend needs no per-asset changes -- every component already takes
+`asset`/`display_name` as props rather than hardcoding a ticker.
 
 ## Troubleshooting
 

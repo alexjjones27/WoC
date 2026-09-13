@@ -586,13 +586,25 @@ class TouchGroup:
 
 
 def build_touch_groups(results: list[TouchFetchResult]) -> tuple[list[TouchGroup], list[dict]]:
-    groups: dict[date, list[TouchForecast]] = defaultdict(list)
+    # keyed (expiry_date, source_name) -> best TouchForecast for that pair.
+    # A source can have more than one touch event landing on the same
+    # calendar date (e.g. Polymarket's weekly AND daily "what will WTI
+    # hit" events both closing "today") -- rather than listing the same
+    # source twice under one date (a real key collision for anything that
+    # keys UI rows by source_name), keep only the higher-volume one.
+    best: dict[tuple[date, str], TouchForecast] = {}
     errors: list[dict] = []
     for r in results:
         if r.error:
             errors.append({"source": r.source_name, "error": r.error})
         for t in r.touches:
-            groups[t.expiry_date].append(t)
+            key = (t.expiry_date, t.source_name)
+            if key not in best or t.total_volume > best[key].total_volume:
+                best[key] = t
+
+    groups: dict[date, list[TouchForecast]] = defaultdict(list)
+    for t in best.values():
+        groups[t.expiry_date].append(t)
 
     out = []
     for expiry_date in sorted(groups):

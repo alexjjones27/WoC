@@ -19,14 +19,14 @@ function ThresholdBars({ items }: { items: { price: number; prob: number }[] }) 
   );
 }
 
-export default function TouchSection({ groups }: { groups: TouchGroup[] }) {
+export default function TouchSection({ asset, groups }: { asset: string; groups: TouchGroup[] }) {
   if (!groups.length) return null;
   return (
     <section className="touch-section">
       <div className="touch-section-header">
         <h2>Touch probability (longer horizon)</h2>
         <p>
-          Chance BTC ever crosses a price before the date shown — a different question from the price-at-date
+          Chance {asset} ever crosses a price before the date shown — a different question from the price-at-date
           forecasts above ("is it above $X on this date"), and deliberately not combined with them.
         </p>
       </div>

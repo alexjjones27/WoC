@@ -23,6 +23,7 @@ function sourceColor(name: string): string {
 }
 
 interface Props {
+  asset: string;
   gridEdges: number[];
   pdf: number[];
   mean: number;
@@ -76,7 +77,7 @@ function niceTicks(lo: number, hi: number, count = 5): number[] {
   return ticks;
 }
 
-export default function ProbabilityChart({ gridEdges, pdf, mean, median, ci68, ci95, sources }: Props) {
+export default function ProbabilityChart({ asset, gridEdges, pdf, mean, median, ci68, ci95, sources }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -132,7 +133,7 @@ export default function ProbabilityChart({ gridEdges, pdf, mean, median, ci68, c
 
   return (
     <div className="chart-wrap">
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label="Probability distribution of BTC price">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label={`Probability distribution of ${asset} price`}>
         {/* CI bands, behind everything */}
         <rect x={x(ci95[0])} y={MARGIN.top} width={Math.max(0, x(ci95[1]) - x(ci95[0]))} height={INNER_H} fill={AGGREGATE_COLOR} opacity={0.07} />
         <rect x={x(ci68[0])} y={MARGIN.top} width={Math.max(0, x(ci68[1]) - x(ci68[0]))} height={INNER_H} fill={AGGREGATE_COLOR} opacity={0.1} />

@@ -22,6 +22,8 @@ export interface SourceBreakdown {
   pdf: number[];
   raw_note: string | null;
   is_play_money: boolean;
+  concentration_discount: number | null;
+  concentration_effective_traders: number | null;
   stale: boolean;
   error: string | null;
 }

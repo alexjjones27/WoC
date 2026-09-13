@@ -221,6 +221,8 @@ class SourceBreakdown:
     pdf: list[float]
     raw_note: str | None = None
     is_play_money: bool = False
+    concentration_discount: float | None = None
+    concentration_effective_traders: float | None = None
     stale: bool = False
     error: str | None = None
 
@@ -460,6 +462,8 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
             pdf=pdf.tolist(),
             raw_note=d.raw_note,
             is_play_money=d.is_play_money,
+            concentration_discount=d.concentration_discount,
+            concentration_effective_traders=d.concentration_effective_traders,
             stale=d.stale,
             error=d.error,
         ))

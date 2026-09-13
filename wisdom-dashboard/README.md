@@ -241,6 +241,49 @@ engineering, not just a formula swap:
   interpolated distribution instead of a visual break in the fan chart --
   a substantial, separate piece of work, not a small addition.
 
+### Are the "votes" behind a market actually independent?
+
+Short answer: not fully, and now partially corrected for -- but only on
+one platform, because it's only measurable on one platform.
+
+A prediction market's volume isn't literal independent votes being
+averaged; it's a market-clearing price, and nothing before this section
+checked whether the trading behind that price came from a broad, genuinely
+independent set of views or a handful of large wallets (and possibly each
+other, via momentum/herding). Checked empirically (not assumed) via
+Polymarket's public wallet-attributed trade feed across 6 live BTC/OIL
+markets -- see `results/polymarket_trader_concentration/report.md` in the
+parent Finance repo: every market showed real concentration (effective
+independent traders, via 1/HHI of volume-by-wallet, from ~1-2 on the
+thinnest daily buckets to ~7-20 even on $6-7M markets) AND a consistent
+positive autocorrelation of trade direction -- a momentum/herding
+signature, not fresh independent assessment each trade.
+
+`backend/concentration.py` now discounts each Polymarket point-in-time
+distribution's weight by its trading concentration (computed from the
+event's highest-volume bucket, cached 30 minutes so this doesn't mean a
+full trade-history fetch on every dashboard refresh) before it reaches the
+cross-platform mixture -- a market whose volume comes from ~2 wallets
+counts for much less than the same dollar volume spread across many.
+Surfaced in the UI as a "concentrated" badge in a card's expanded
+platform-breakdown table.
+
+**The asymmetry this creates, stated plainly**: Kalshi (a regulated DCM)
+exposes no public wallet-level trade data, and Manifold wasn't checked --
+so only Polymarket gets this discount. A Polymarket market can end up
+weighted *below* an equally (or more) concentrated Kalshi market purely
+because we can measure one and not the other. That's a real limitation of
+this correction, not a claim that Polymarket is uniquely prone to this.
+
+The herding/momentum finding is deliberately NOT used for any live
+correction -- it's real and consistent across every market checked, but
+unlike concentration (which has a fairly direct "effective sample size"
+interpretation), there's no similarly well-grounded way yet to translate
+"trades are autocorrelated by X" into "discount this market's weight by
+Y." Left as an open question in `concentration.py`'s docstring rather than
+quietly folded into a number that would overstate how rigorously it was
+derived.
+
 ### Known scope decisions (read before extending)
 
 - **Polymarket**: only the recurring "Bitcoin price on `<date>`?" range-bucket

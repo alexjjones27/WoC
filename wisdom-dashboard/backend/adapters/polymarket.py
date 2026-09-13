@@ -40,6 +40,18 @@ the same event and are filtered out, keeping only currently-active
 at once (a weekly AND a monthly "what will WTI hit" event) -- unlike BTC's
 single one, so touch discovery returns a list, not a single slug.
 
+Every point-in-time distribution's weight is also discounted by trading
+concentration (see ../concentration.py): a market's dollar volume can come
+from a broad crowd or from a handful of large wallets, and raw volume alone
+can't tell those apart. Confirmed empirically (not assumed) across 6 live
+BTC/OIL markets spanning $1.7k-$6.8M volume -- see
+../../results/polymarket_trader_concentration/report.md -- every one showed
+real concentration, from ~1-2 effective independent traders on the
+thinnest daily buckets to ~20 on the most diffuse. Kalshi/Manifold don't
+get this treatment (no public trade-level data to measure it from), a real
+asymmetry documented in the top-level README, not a claim that only
+Polymarket has this problem.
+
 Discovery: Polymarket has no "list markets by exact family" endpoint, so we
 use the public full-text search endpoint and keep only active events whose
 title matches a per-asset pattern. Confirmed live: this endpoint needs no
@@ -57,6 +69,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
+import concentration
 from adapters.base import SourceAdapter
 from adapters.http import get_json
 from common.distribution import (
@@ -199,6 +212,8 @@ class PolymarketAdapter(SourceAdapter):
 
         buckets: list[PriceBucket] = []
         total_volume = 0.0
+        top_bucket_volume = -1.0
+        top_bucket_condition_id: str | None = None
         for m in ev.get("markets", []):
             label = m.get("groupItemTitle") or m.get("question", "")
             low, high = _parse_bucket_label(label)
@@ -212,10 +227,28 @@ class PolymarketAdapter(SourceAdapter):
             except (KeyError, ValueError, TypeError):
                 continue
             buckets.append(PriceBucket(low=low, high=high, prob=prob, label=label))
-            total_volume += float(m.get("volumeNum") or 0.0)
+            bucket_volume = float(m.get("volumeNum") or 0.0)
+            total_volume += bucket_volume
+            if bucket_volume > top_bucket_volume and m.get("conditionId"):
+                top_bucket_volume = bucket_volume
+                top_bucket_condition_id = m["conditionId"]
 
         if not buckets:
             return None
+
+        # Trader-concentration discount (see ../concentration.py): computed
+        # from the event's single highest-volume bucket as a proxy for the
+        # whole event's trader base (fetching every bucket's trade history
+        # would be 11-30x the cost for a marginal accuracy gain) -- cached
+        # for 30 minutes, so this only costs a real fetch once per event
+        # per half hour, not once per dashboard refresh.
+        weight = max(total_volume, float(ev.get("volume") or 0.0))
+        discount, effective_traders = 1.0, None
+        if top_bucket_condition_id:
+            try:
+                discount, effective_traders = concentration.discount_for(top_bucket_condition_id)
+            except Exception:  # noqa: BLE001 -- never let this secondary check break the primary fetch
+                pass
 
         return PriceDistribution(
             asset=asset,
@@ -224,13 +257,15 @@ class PolymarketAdapter(SourceAdapter):
             target_date=target_dt.date(),
             period_label=_period_label(target_dt),
             buckets=buckets,
-            weight=max(total_volume, float(ev.get("volume") or 0.0)),
+            weight=weight * discount,
             resolve_datetime_utc=end_date,
             volume=float(ev.get("volume") or 0.0),
             open_interest=float(ev.get("openInterest")) if ev.get("openInterest") is not None else None,
             liquidity=float(ev.get("liquidity")) if ev.get("liquidity") is not None else None,
             source_url=f"https://polymarket.com/event/{slug}",
             raw_note="Mutually-exclusive range-bucket event; bucket Yes-price = bucket probability directly.",
+            concentration_discount=discount,
+            concentration_effective_traders=effective_traders,
         )
 
     def fetch_touch(self, asset: str) -> TouchFetchResult:

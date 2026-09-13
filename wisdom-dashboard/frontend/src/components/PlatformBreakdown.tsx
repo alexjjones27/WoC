@@ -28,6 +28,14 @@ export default function PlatformBreakdown({ sources }: { sources: SourceBreakdow
                   play money
                 </span>
               )}
+              {s.concentration_discount !== null && s.concentration_discount < 0.5 && (
+                <span
+                  className="concentration-badge"
+                  title={`Trading here looks concentrated among ~${s.concentration_effective_traders?.toFixed(1)} effective independent wallets (1/HHI of volume by wallet) -- weight discounted to ${(s.concentration_discount * 100).toFixed(0)}% of raw volume. See concentration.py.`}
+                >
+                  concentrated
+                </span>
+              )}
             </td>
             <td className="num">{formatPrice(s.mean)}</td>
             {/* Play-money volume is a token count, not USD -- formatCompactUsd would print a misleading "$" */}

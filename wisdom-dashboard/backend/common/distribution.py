@@ -59,6 +59,8 @@ class PriceDistribution:
     source_url: str | None = None
     raw_note: str | None = None  # free-text: what exactly this distribution represents
     is_play_money: bool = False  # volume/weight are in a non-redeemable token, not USD (see e.g. adapters/manifold.py)
+    concentration_discount: float | None = None  # 1.0 = none applied; see backend/concentration.py
+    concentration_effective_traders: float | None = None  # 1/HHI of volume-by-wallet, if measured
     stale: bool = False
     error: str | None = None
     fetched_at_utc: str | None = None

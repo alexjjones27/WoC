@@ -317,6 +317,17 @@ body {
   color: var(--accent);
   text-decoration: none;
 }
+.concentration-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--serious);
+  border: 1px solid var(--serious);
+  border-radius: 8px;
+  padding: 1px 5px;
+}
 .play-money-badge {
   display: inline-block;
   margin-left: 6px;

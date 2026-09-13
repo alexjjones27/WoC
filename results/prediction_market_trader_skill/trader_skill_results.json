@@ -1,0 +1,369 @@
+{
+  "generated_at_utc": "2026-09-13T19:45:18.750325+00:00",
+  "BTC": {
+    "n_trades": 218874,
+    "n_wallets": 12030,
+    "n_events": 96,
+    "leaderboard_top10": [
+      {
+        "wallet": "0x39e27d15c14d304d49becedbae1e372c4724c0dd",
+        "total_pnl": 2991.0527449999713,
+        "total_notional": 9.99987500002877,
+        "n_trades": 8,
+        "n_events": 6,
+        "edge": 299.10901336180365
+      },
+      {
+        "wallet": "0xf94b6e3aa9e2d36ec41c6be80ead40168a23b8f6",
+        "total_pnl": 1993.0,
+        "total_notional": 7.0,
+        "n_trades": 7,
+        "n_events": 5,
+        "edge": 284.7142857142857
+      },
+      {
+        "wallet": "0x83d6d130391e3d8940d500e8204f3d39b07f16e7",
+        "total_pnl": 1993.1052910000108,
+        "total_notional": 8.999968999989276,
+        "n_trades": 6,
+        "n_events": 4,
+        "edge": 221.4569062407199
+      },
+      {
+        "wallet": "0xdbc7543fe97dc6827ebaa96d4445b1725e0ddc1f",
+        "total_pnl": 1025.7142909960382,
+        "total_notional": 9.999993003961851,
+        "n_trades": 9,
+        "n_events": 4,
+        "edge": 102.57150085901712
+      },
+      {
+        "wallet": "0x0942f1fb0fb5e3375093fa277c9299a79fac04ce",
+        "total_pnl": 1983.9656779974534,
+        "total_notional": 19.965522002546457,
+        "n_trades": 13,
+        "n_events": 6,
+        "edge": 99.36958711845415
+      },
+      {
+        "wallet": "0xd238bc6303a72c4c9fb360bc25bdd7402017ad4d",
+        "total_pnl": 993.0712619999953,
+        "total_notional": 10.018358000004755,
+        "n_trades": 10,
+        "n_events": 6,
+        "edge": 99.12515224546019
+      },
+      {
+        "wallet": "0x4c2f554e38ef8177b30284e221a4138240fffc7b",
+        "total_pnl": 1982.0008759999614,
+        "total_notional": 22.00072400003851,
+        "n_trades": 13,
+        "n_events": 8,
+        "edge": 90.08798419526977
+      },
+      {
+        "wallet": "0x4c3f94a23b2439ba2749cb829af3fd1f9a2e31b9",
+        "total_pnl": 1963.0,
+        "total_notional": 37.0,
+        "n_trades": 37,
+        "n_events": 19,
+        "edge": 53.054054054054056
+      },
+      {
+        "wallet": "0x3360fd1bcb811d83e8fafd0fe4008851b439955b",
+        "total_pnl": 1728.7337700030998,
+        "total_notional": 37.3262299969,
+        "n_trades": 7,
+        "n_events": 4,
+        "edge": 46.31418094317787
+      },
+      {
+        "wallet": "0x4beafff58639dfed843d3ddc713cddf7743c0ad4",
+        "total_pnl": 1005.5636500008231,
+        "total_notional": 50.93830299917686,
+        "n_trades": 36,
+        "n_events": 17,
+        "edge": 19.740815669047173
+      }
+    ],
+    "leaderboard_bottom10": [
+      {
+        "wallet": "0x46b353667fd7d846af3bbeda6584b0e5b883d3de",
+        "total_pnl": -15.155149999999999,
+        "total_notional": 6.83485,
+        "n_trades": 36,
+        "n_events": 18,
+        "edge": -2.2173346891299732
+      },
+      {
+        "wallet": "0x2d21e67a19f0ee68f36e720b9883146e8df36dfe",
+        "total_pnl": -11.7582,
+        "total_notional": 4.5418,
+        "n_trades": 5,
+        "n_events": 2,
+        "edge": -2.588885463912986
+      },
+      {
+        "wallet": "0x29bb5c9126ccd832debe47e56730da81854046b8",
+        "total_pnl": -969.0593790003676,
+        "total_notional": 349.82061900585165,
+        "n_trades": 35,
+        "n_events": 20,
+        "edge": -2.7701608377296867
+      },
+      {
+        "wallet": "0x0d2031e4a9cdad8428e87bdaaba4c76a9d6c606a",
+        "total_pnl": -558.451,
+        "total_notional": 186.199,
+        "n_trades": 7,
+        "n_events": 3,
+        "edge": -2.999215892673967
+      },
+      {
+        "wallet": "0xb5c31e0f41326dba6a2d2cd907e286d39012ecc6",
+        "total_pnl": -124.472130003652,
+        "total_notional": 34.678470004348,
+        "n_trades": 21,
+        "n_events": 1,
+        "edge": -3.589320116719268
+      },
+      {
+        "wallet": "0x22056c33dc322d241e39191b18aaed155c38c2bc",
+        "total_pnl": -3337.9808499556734,
+        "total_notional": 915.1735500443281,
+        "n_trades": 10,
+        "n_events": 4,
+        "edge": -3.647374697175189
+      },
+      {
+        "wallet": "0x6ae9945118ce5dfd452dc203a1887a5a37c414fe",
+        "total_pnl": -45.05278,
+        "total_notional": 9.7348,
+        "n_trades": 5,
+        "n_events": 4,
+        "edge": -4.628012902165427
+      },
+      {
+        "wallet": "0x4689432441274c8145c2a316a9d89aad311df939",
+        "total_pnl": -30.000279998637,
+        "total_notional": 5.999720001363001,
+        "n_trades": 5,
+        "n_events": 1,
+        "edge": -5.000280011704149
+      },
+      {
+        "wallet": "0xca7627e72616b4362c388d8c3e74ffc7936fc885",
+        "total_pnl": -18.32983,
+        "total_notional": 1.67017,
+        "n_trades": 9,
+        "n_events": 4,
+        "edge": -10.974828909631954
+      },
+      {
+        "wallet": "0x97971fc150dda73fed035f039f576d40a08c2532",
+        "total_pnl": -1901.291979990345,
+        "total_notional": 68.218020009655,
+        "n_trades": 538,
+        "n_events": 75,
+        "edge": -27.870817413364563
+      }
+    ],
+    "population_edge_mean": 0.21405579321928497,
+    "population_edge_median": -0.427750667037043,
+    "population_edge_std": 10.319487113611437,
+    "persistence": {
+      "n_wallets": 690,
+      "correlation_edge1_vs_edge2": 0.2858053034576462,
+      "permutation_p_value": 0.001,
+      "n_permutations": 2000,
+      "top_decile_p1_edge_mean": 0.646280621529557,
+      "top_decile_p2_edge_mean": 1.058924623716461,
+      "bottom_decile_p1_edge_mean": -1.2266059474612676,
+      "bottom_decile_p2_edge_mean": 0.2447623360076074,
+      "population_p2_edge_mean": -0.287910603627958
+    }
+  },
+  "OIL": {
+    "n_trades": 65740,
+    "n_wallets": 16170,
+    "n_events": 16,
+    "leaderboard_top10": [
+      {
+        "wallet": "0xc07b004d992a7d67e0a11af0987bfd08aae16ee4",
+        "total_pnl": 4995.0,
+        "total_notional": 5.0,
+        "n_trades": 5,
+        "n_events": 1,
+        "edge": 999.0
+      },
+      {
+        "wallet": "0x78f739b928a2ae1e79946544edd7f8b0c2059cf8",
+        "total_pnl": 4994.0,
+        "total_notional": 6.0,
+        "n_trades": 10,
+        "n_events": 1,
+        "edge": 832.3333333333334
+      },
+      {
+        "wallet": "0x7b1d22c2c81442baa67933c1d9dad3bd0fb1ba7c",
+        "total_pnl": 2994.0,
+        "total_notional": 6.0,
+        "n_trades": 5,
+        "n_events": 1,
+        "edge": 499.0
+      },
+      {
+        "wallet": "0x13a7e960a7b69b59502b6b9ced17a1e08c046197",
+        "total_pnl": 2989.0000010104823,
+        "total_notional": 10.999998989517687,
+        "n_trades": 9,
+        "n_events": 3,
+        "edge": 271.7272977805555
+      },
+      {
+        "wallet": "0x6c3f99611ac0b788de1dcd0fb49c18ac0c42e6a2",
+        "total_pnl": 4833.21205,
+        "total_notional": 22.377950000000002,
+        "n_trades": 10,
+        "n_events": 1,
+        "edge": 215.98100138752653
+      },
+      {
+        "wallet": "0x19b87fad1d000fbcbb8253513fdeb50a36f30c6c",
+        "total_pnl": 728.3333339734888,
+        "total_notional": 4.999999026511291,
+        "n_trades": 5,
+        "n_events": 1,
+        "edge": 145.66669515567438
+      },
+      {
+        "wallet": "0x1d5b2a07615a2c14908dac6e344976b6cf04403f",
+        "total_pnl": 4914.735965004145,
+        "total_notional": 46.909596995854805,
+        "n_trades": 6,
+        "n_events": 1,
+        "edge": 104.7703727968168
+      },
+      {
+        "wallet": "0x5016f0e8552715c16619a3be5c0e07c77047017d",
+        "total_pnl": 3976.230719989759,
+        "total_notional": 58.230719989758995,
+        "n_trades": 21,
+        "n_events": 3,
+        "edge": 68.28407274869788
+      },
+      {
+        "wallet": "0xb7cbe58a758da80b67acceac3b7ef824fe54a29e",
+        "total_pnl": 1022.9601089994637,
+        "total_notional": 26.29799700059226,
+        "n_trades": 5,
+        "n_events": 1,
+        "edge": 38.89878415365343
+      },
+      {
+        "wallet": "0xaa9b39a4d61b933f7487af1f5a45e96a3dd812fe",
+        "total_pnl": 1002.638960000708,
+        "total_notional": 31.99505199683199,
+        "n_trades": 20,
+        "n_events": 2,
+        "edge": 31.33731303515259
+      }
+    ],
+    "leaderboard_bottom10": [
+      {
+        "wallet": "0xa6dcc89a31d7d68c961969eed282690ed41912ec",
+        "total_pnl": -183.37,
+        "total_notional": 61.61,
+        "n_trades": 5,
+        "n_events": 2,
+        "edge": -2.9763025482876158
+      },
+      {
+        "wallet": "0xee6712ea09d6a9c86793bb6dde10ea59040e67a6",
+        "total_pnl": -1041.054149989271,
+        "total_notional": 311.947150010729,
+        "n_trades": 118,
+        "n_events": 4,
+        "edge": -3.337277323910366
+      },
+      {
+        "wallet": "0x3e5630959499c5b5e55aceeeeae7446933d335d5",
+        "total_pnl": -33.8310900000002,
+        "total_notional": 9.673445000000202,
+        "n_trades": 12,
+        "n_events": 1,
+        "edge": -3.497315589223849
+      },
+      {
+        "wallet": "0xe7489125473c49a187c41c01d6ec96801d8a2b23",
+        "total_pnl": -41.664450001,
+        "total_notional": 11.374549999000001,
+        "n_trades": 14,
+        "n_events": 2,
+        "edge": -3.6629536996771694
+      },
+      {
+        "wallet": "0xf15f4ff6d8ac89a83e0396446b3fe34de3c3c75d",
+        "total_pnl": -1.859,
+        "total_notional": 0.331,
+        "n_trades": 6,
+        "n_events": 1,
+        "edge": -5.61631419939577
+      },
+      {
+        "wallet": "0x4576807e06fd5f3c318a5d8f1c3407cf5185c032",
+        "total_pnl": -18.09,
+        "total_notional": 1.9100000000000001,
+        "n_trades": 7,
+        "n_events": 1,
+        "edge": -9.471204188481675
+      },
+      {
+        "wallet": "0x46b353667fd7d846af3bbeda6584b0e5b883d3de",
+        "total_pnl": -44.335879997153995,
+        "total_notional": 4.664120002846,
+        "n_trades": 28,
+        "n_events": 7,
+        "edge": -9.50573312223971
+      },
+      {
+        "wallet": "0x97971fc150dda73fed035f039f576d40a08c2532",
+        "total_pnl": -45.19835,
+        "total_notional": 3.6016500000000002,
+        "n_trades": 25,
+        "n_events": 10,
+        "edge": -12.54934543889606
+      },
+      {
+        "wallet": "0xda1407c2f1bf2809ca78b70c94155d04ceeca40c",
+        "total_pnl": -948.5571199999999,
+        "total_notional": 51.442879999999995,
+        "n_trades": 15,
+        "n_events": 1,
+        "edge": -18.43903607263046
+      },
+      {
+        "wallet": "0x2d62a379d40d2fafa00e40bd1a58d03bf18b680b",
+        "total_pnl": -552.748320000396,
+        "total_notional": 22.611679999604,
+        "n_trades": 6,
+        "n_events": 1,
+        "edge": -24.44525661118839
+      }
+    ],
+    "population_edge_mean": 1.8211767881989656,
+    "population_edge_median": -0.015543497029927045,
+    "population_edge_std": 34.124080384182534,
+    "persistence": {
+      "n_wallets": 368,
+      "correlation_edge1_vs_edge2": 0.0020370645285922853,
+      "permutation_p_value": 0.7945,
+      "n_permutations": 2000,
+      "top_decile_p1_edge_mean": 5.079156532955434,
+      "top_decile_p2_edge_mean": 1.0727206241651281,
+      "bottom_decile_p1_edge_mean": -24.084192791278067,
+      "bottom_decile_p2_edge_mean": 19.03910674424775,
+      "population_p2_edge_mean": 2.07803860730969
+    }
+  }
+}

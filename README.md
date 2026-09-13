@@ -1,6 +1,6 @@
 # WoC (Wisdom of Crowds)
 
-Three pieces, built together:
+Four pieces, built together:
 
 - **[`wisdom-dashboard/`](wisdom-dashboard/)** — a local web app that pulls live BTC
   and crude oil (WTI) price-threshold/range markets from Polymarket, Kalshi, and
@@ -34,3 +34,17 @@ Three pieces, built together:
   trade-direction autocorrelation. The dashboard's `backend/concentration.py`
   applies the concentration half of this as a weight discount (Polymarket
   only — Kalshi/Manifold don't expose the trade-level data this needs).
+
+- **[`src/prediction_market_trader_skill.py`](src/prediction_market_trader_skill.py)** —
+  have individual Polymarket traders actually been good at predicting BTC
+  and oil prices, and is it real skill or noise? Scores every trade
+  (218,874 BTC trades across 96 resolved daily events; 65,740 OIL trades
+  across 16 resolved touch events) against what actually happened, then
+  runs the standard test for this — does a trader's edge in the first half
+  of the sample predict their edge in the second, independent half.
+  Finding, in [`results/prediction_market_trader_skill/report.md`](results/prediction_market_trader_skill/report.md):
+  **BTC shows real, statistically significant skill persistence**
+  (correlation 0.29, permutation p=0.001); **OIL shows none detected**
+  (p=0.79, but on a much smaller sample — read as underpowered, not as
+  proof oil is unpredictable). Not wired into the live dashboard — a
+  standalone finding, not (yet) a correction.

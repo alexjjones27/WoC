@@ -185,3 +185,40 @@ def test_log_interp_is_monotone_between_anchors():
     xs = [6, 12, 24, 48, 72, 100, 144]
     ys = [_log_interp(anchors, float(x)) for x in xs]
     assert all(a <= b for a, b in zip(ys, ys[1:]))
+
+
+# --- CI width multiplier --------------------------------------------------
+
+def test_ci_multiplier_matches_its_anchors():
+    from aggregation import CI_WIDTH_MULT_BY_LEAD_HOURS, _ci_width_multiplier
+
+    for h, v in CI_WIDTH_MULT_BY_LEAD_HOURS.items():
+        assert _ci_width_multiplier(h) == pytest.approx(v)
+
+
+def test_ci_multiplier_tapers_to_no_correction_below_the_measured_range():
+    """Clamping at the 6h anchor applied a 1.79x widening to forecasts
+    minutes from resolution, which pushed 68% intervals to 94-100%
+    coverage in the aggregate backtest. Below the lowest measured lead the
+    correction tapers toward 1.0 instead."""
+    from aggregation import _ci_width_multiplier
+
+    assert _ci_width_multiplier(6.0) == pytest.approx(1.792)
+    assert _ci_width_multiplier(3.0) == pytest.approx(1.396, abs=0.001)
+    assert _ci_width_multiplier(5 / 60) < 1.02
+    assert _ci_width_multiplier(0.0) == pytest.approx(1.0)
+
+    # Monotone from 0 up to the lowest anchor -- no discontinuity at 6h.
+    xs = [0.0, 0.5, 1.0, 2.0, 4.0, 5.9, 6.0]
+    ys = [_ci_width_multiplier(x) for x in xs]
+    assert all(a <= b + 1e-12 for a, b in zip(ys, ys[1:]))
+
+
+def test_longshot_shrink_still_clamps_below_the_measured_range():
+    """Deliberately NOT tapered: a cheap contract minutes from expiry is if
+    anything less likely to pay off than the 6h measurement says, so
+    tapering toward 'no correction' would be the unjustified move."""
+    from aggregation import SHRINK_BY_LEAD_HOURS, _log_interp
+
+    assert _log_interp(SHRINK_BY_LEAD_HOURS, 5 / 60) == pytest.approx(0.16)
+    assert _log_interp(SHRINK_BY_LEAD_HOURS, 0.5) == pytest.approx(0.16)

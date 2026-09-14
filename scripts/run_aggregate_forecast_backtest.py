@@ -53,7 +53,8 @@ def main():
         cells = []
         for n in ab.FORECAST_NAMES:
             f = e["forecasts"].get(n)
-            cells.append(f"{f['ci68_coverage']:>12.1%} " if f else f"{'--':>13}")
+            cov = f["ci68_coverage"] if f else None
+            cells.append(f"{cov:>12.1%} " if cov is not None else f"{'n/a':>13}")
         print(f"{e['lead_minutes']:>4}m  " + "  ".join(cells))
 
     # The actual thesis under test.
@@ -67,6 +68,17 @@ def main():
         print(f"{e['lead_minutes']:>4}m  {c['n']:>4}  {c['aggregate_crps']:>11,.0f}  "
               f"{c['best_single_crps']:>12,.0f}  {c['aggregate_beats_best_single_rate']:>10.1%}  "
               f"{c['aggregate_beats_polymarket_rate']:>8.1%}  {c['aggregate_beats_kalshi_rate']:>12.1%}")
+
+    # Does ANY fixed blend beat the better source, or only this one?
+    sweeps = [e for e in summary if "blend_sweep" in e]
+    if sweeps:
+        ws = [str(w) for w in ab.BLEND_WEIGHTS]
+        print("\nBlend sweep: CRPS by Polymarket's share of the mixture "
+              "(0.00 = Kalshi alone, 1.00 = Polymarket alone)")
+        print(f"{'lead':>6}  " + "  ".join(f"{('w=' + w):>9}" for w in ws))
+        for e in sweeps:
+            row = e["blend_sweep"]["polymarket_share_to_crps"]
+            print(f"{e['lead_minutes']:>4}m  " + "  ".join(f"{row[w]:>9,.0f}" for w in ws))
 
     out_dir = ab.RESULTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -68,6 +68,11 @@ REBUILD_FRONTEND=1 ./run.sh
 
 To run on a different port: `PORT=8080 ./run.sh`.
 
+`run.sh` binds **loopback only** by default -- this is an unauthenticated
+local research dashboard, so it should not be reachable from the rest of
+the network unless you say so. Set `HOST=0.0.0.0 ./run.sh` if you do want
+that.
+
 ### Developing the frontend
 
 `./run.sh` serves a production build. While actively editing the UI, run
@@ -83,13 +88,32 @@ at the same live data.
 
 ## What it shows
 
-One card per date that has an active market: a point forecast (mean +
-median), 68%/95% confidence intervals, standard deviation, a probability
-histogram, a confidence/liquidity badge, and (when more than one platform
-covers that date) a per-platform breakdown showing whether they agree and
-how much volume backs each. Expand a card ("Details") for the full
-per-platform table and round-number threshold probabilities ("62% chance
-BTC > $100k by Nov 30"-style rows).
+One card per date that has an active market. The card **leads with
+market-implied probabilities** ("96% chance BTC above $77,000"), then the
+probability histogram, then the point forecast (mean, median, sigma,
+68%/95% intervals) as a reference row, plus a confidence/liquidity badge
+and, when more than one platform covers that date, a per-platform
+breakdown. Expand a card ("Details") for the full per-platform table, the
+whole threshold ladder, and a line stating exactly what the calibration
+correction did to that card.
+
+**Why the probabilities lead and the point forecast does not.** The
+calibration backtest
+(`../results/btc_price_market_calibration/report.md`) found the market's
+implied *mean* loses to "assume nothing changes" by 34-43% at every lead
+time from 6h to 6 days; that its *median* is no better, so that is not an
+artifact of how the open tails are reconstructed; and that its whole
+*distribution* loses to a random walk widened by trailing realized
+volatility, on both sharpness (CRPS) and interval coverage. What did
+measure well is bucket-level probabilities. So the biggest number on the
+card is the one the evidence supports, and the point estimate carries a
+visible note about what the backtest found. Nothing is hidden -- every
+number that used to be there still is.
+
+The threshold ladder spans the central 96% of each distribution rather
+than the whole padded grid, so its steps scale with the forecast's own
+width. Spanning the grid put most rows out in the exponential tails where
+they all read 100% or 0%.
 
 The dashboard refreshes automatically every 60s and on load; the Refresh
 button forces an immediate re-fetch from every source, bypassing the
@@ -167,6 +191,20 @@ of this lives). Summary:
    -- a platform with 10x the volume contributes 10x the probability mass to
    the combined curve. This is what makes it volume-*weighted* rather than a
    simple average.
+
+   **This step has now been backtested, and it did not come out well**
+   (`../results/aggregate_forecast_backtest/report.md`). On the only 63
+   events where Polymarket and Kalshi demonstrably forecast the same
+   instant, the mixture beat the better single source 3-13% of the time.
+   Sweeping the blend weight across its whole range showed CRPS *monotone*
+   in that weight, with the optimum always at a corner -- so no fixed
+   weighting, volume-based or otherwise, beats simply taking the better
+   source there. Averaging helps when sources are comparable in quality and
+   their errors are partly independent; at that horizon they are not
+   comparable, and volume carries no information about which source is
+   sharper. Read the report's caveats before generalizing: the only
+   measurable overlap is the final hour before resolution, which is not the
+   horizon most cards live at.
 4. **Stats from the actual (possibly skewed) aggregate curve**, not a normal
    assumption: mean/variance analytically; median and the 68%/95% intervals
    by interpolating the real cumulative distribution.
@@ -181,9 +219,9 @@ of this lives). Summary:
    std dev. Two sources that individually agree tightly but sit far apart
    can otherwise look like one plausible curve; this is what catches that.
 7. **Calibration correction**, applied to every forecast: a backtest
-   (`../results/btc_price_market_calibration/report.md` in the parent
-   Finance repo, `scripts/run_btc_price_market_calibration.py` to
-   reproduce/extend it) scored 96 resolved Polymarket BTC markets against
+   (`../results/btc_price_market_calibration/report.md`,
+   `../scripts/run_btc_price_market_calibration.py` to reproduce/extend
+   it) scored 97 resolved Polymarket BTC markets against
    realized price and found two consistent, lead-time-dependent biases --
    buckets priced under ~10% resolve Yes less often than stated (shrunk by
    `SHRINK_BY_LEAD_HOURS`), and the stated 68% CI was badly overconfident
@@ -196,7 +234,29 @@ of this lives). Summary:
    with more data, not a settled result (the report's Caveats section says
    more). Each `AggregateForecast` exposes `lead_hours`,
    `longshot_shrink_applied`, and `ci_width_mult_applied` so you can see
-   exactly what was applied to any given card.
+   exactly what was applied to any given card, and the expanded card
+   states it in words.
+
+   Two things about *how* this is applied are easy to get wrong and are
+   worth knowing if you tune it:
+
+   - **The freed mass goes onto the non-longshot buckets explicitly.**
+     Shrinking the sub-10% buckets and letting step 3's renormalization
+     sort it out does not deliver the calibrated factor: renormalizing
+     divides every bucket by the post-shrink total, scaling the shrunk
+     ones back up too, so what actually lands is `shrink / mass`. With 40%
+     of a source's mass in sub-threshold buckets at a 6h lead, an intended
+     0.16 arrives as 0.24 -- barely half the measured correction, and the
+     shortfall grows with tail mass. `_longshot_corrected_probs` handles
+     the redistribution, and `longshot_shrink_applied` reports the factor
+     really delivered rather than the one looked up in the table.
+   - **Lead time is per source, not per date-group.** Two sources sharing
+     a target date can resolve at different times of day (see the grouping
+     caveat under "Known scope decisions"), so each gets its own
+     correction; the card's `lead_hours` is the weight-weighted
+     combination. Reading it off whichever distribution happened to arrive
+     first made a card's correction depend on adapter completion order --
+     the same data could produce different numbers between two refreshes.
 
 ### Turning noisy quotes into probabilities (per-source, before aggregation)
 
@@ -252,8 +312,8 @@ checked whether the trading behind that price came from a broad, genuinely
 independent set of views or a handful of large wallets (and possibly each
 other, via momentum/herding). Checked empirically (not assumed) via
 Polymarket's public wallet-attributed trade feed across 6 live BTC/OIL
-markets -- see `results/polymarket_trader_concentration/report.md` in the
-parent Finance repo: every market showed real concentration (effective
+markets -- see `../results/polymarket_trader_concentration/report.md`:
+every market showed real concentration (effective
 independent traders, via 1/HHI of volume-by-wallet, from ~1-2 on the
 thinnest daily buckets to ~7-20 even on $6-7M markets) AND a consistent
 positive autocorrelation of trade direction -- a momentum/herding
@@ -267,6 +327,16 @@ cross-platform mixture -- a market whose volume comes from ~2 wallets
 counts for much less than the same dollar volume spread across many.
 Surfaced in the UI as a "concentrated" badge in a card's expanded
 platform-breakdown table.
+
+The discount also feeds the **confidence score and tier**, not just the
+mixture weight. It used to affect only the weight, which is invisible, so
+a $6M market backed by two wallets still showed "high confidence" to the
+person acting on it. `AggregateForecast.total_volume` remains raw dollars
+traded, for display; `effective_volume` is the concentration-adjusted
+figure the score is computed from, and the badge says so when the two
+differ materially. Unmeasured concentration (Kalshi, Manifold) is treated
+as no discount -- benefit of the doubt, not a penalty for being
+unmeasurable.
 
 **The asymmetry this creates, stated plainly**: Kalshi (a regulated DCM)
 exposes no public wallet-level trade data, and Manifold wasn't checked --
@@ -299,6 +369,22 @@ derived.
   has more than one `KXBTCD` ladder closing on the same calendar date,
   only the latest is kept, to avoid silently blending two different times
   of day into one "period." See `adapters/kalshi.py`.
+- **Grouping is by calendar date, and the sources within a date may not
+  describe the same instant.** This is the sharpest known limitation of
+  the live cards. Polymarket's daily BTC events all resolve at
+  **16:00:00Z**; `KXBTCD` is a series of **one-hour** markets, and the
+  latest one closing on that date can be up to eight hours away from
+  16:00Z. So a two-source card can blend two forecasts of genuinely
+  different moments, at an asset that moves on the order of 0.4% an hour.
+  The per-source lead-time fix above means each source at least gets the
+  calibration correction for its own horizon, and each card's expanded
+  details show both, but the grouping itself is still by date. Fixing it
+  properly means grouping by resolution *instant* and treating "same day,
+  different hour" as separate forecasts -- which would leave most dates
+  single-source, and is a product decision, not just a code change.
+  `../results/aggregate_forecast_backtest/report.md` deliberately pairs
+  the Kalshi ladder that closes at Polymarket's own resolution instant, so
+  that it measures aggregation rather than this mismatch.
 - **The 1-week-to-3-month gap is real, not a bug.** As of this build,
   neither platform has a *genuine point-in-time* BTC market between ~6
   days out (Polymarket's last "Bitcoin price on X") and Jan 1, 2027
@@ -409,3 +495,28 @@ The frontend needs no per-asset changes -- every component already takes
   under the header for a per-source error message if one failed outright.
 - **"stale" banner**: every source failed on the last refresh; you're
   looking at the last good fetch. Try Refresh again in a bit.
+
+## Tests
+
+```
+cd backend && python3 -m pip install -r requirements-dev.txt && python3 -m pytest
+```
+
+No network needed -- the suite builds `PriceDistribution` objects by hand
+and exercises the aggregation contract directly. It covers the resampling
+math (closed buckets, both exponential tails, mass and analytic mean), the
+percentile/threshold helpers, lead-time interpolation, the longshot
+correction, and `aggregate_group`/`build_dashboard`/`build_touch_groups`
+end to end.
+
+Several tests exist specifically to pin behaviour that was wrong before:
+that the longshot correction delivers the factor it reports, that lead
+time does not depend on adapter completion order, that a concentrated
+market scores lower confidence than the same dollars spread wide, that
+unmeasured concentration is not read as maximal concentration, that the
+exponential tails do not drift with grid padding the way the uniform ones
+did, and that the threshold ladder lands where probability actually
+varies.
+
+The research modules in `../src/` have their own suite in `../tests/`,
+including synthetic-population tests for the trader-skill statistics.

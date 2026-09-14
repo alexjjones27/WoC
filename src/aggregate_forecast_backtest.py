@@ -66,7 +66,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -446,7 +446,11 @@ class Scored:
     crps: float
     abs_error_mean: float
     abs_error_median: float
-    ci68_hit: bool
+    # None where the forecast has no interval to check. The naive point
+    # forecast is the case: it is a point mass, so "did the realized price
+    # fall inside its 68% interval" has no answer, and reporting it as a
+    # miss would print a meaningless 0% next to real coverage numbers.
+    ci68_hit: bool | None
 
 
 def score_forecast(name: str, forecast, realized: float) -> Scored:
@@ -466,6 +470,8 @@ class DateResult:
     realized: float
     spot_at_lead: float | None
     scores: dict[str, Scored] = field(default_factory=dict)
+    # Polymarket's share of the mixture -> CRPS of the resulting blend.
+    blend_crps: dict[float, float] = field(default_factory=dict)
 
 
 def score_date(
@@ -504,10 +510,18 @@ def score_date(
             return None
         res.scores[name] = score_forecast(name, fc, realized)
 
+    # Same two distributions, blended at a range of fixed weights.
+    for w in BLEND_WEIGHTS:
+        pm_w = replace(pm, weight=max(w, 1e-9))
+        k_w = replace(k, weight=max(1.0 - w, 1e-9))
+        fc = aggregation.aggregate_group([pm_w, k_w])
+        if fc is not None:
+            res.blend_crps[w] = crps_from_grid(np.array(fc.grid_edges), np.array(fc.pdf), realized)
+
     if res.spot_at_lead is not None:
         # A point forecast: CRPS collapses to absolute error.
         err = abs(res.spot_at_lead - realized)
-        res.scores["naive"] = Scored("naive", err, err, err, False)
+        res.scores["naive"] = Scored("naive", err, err, err, None)
         sigma = btccal.realized_vol_sigma(spot, query_ts, max(lead_minutes / 60.0, 1e-3))
         if sigma is not None and sigma > 0:
             half = 0.9944578832097535 * sigma
@@ -522,6 +536,16 @@ def score_date(
 
 
 FORECAST_NAMES = ["polymarket", "kalshi", "aggregate", "naive", "random_walk"]
+
+# Blend weights swept in score_date, as Polymarket's share of the mixture
+# (so 0.0 is Kalshi alone, 1.0 is Polymarket alone, 0.5 is the equal-weight
+# "aggregate" above). This is what turns "the equal-weight mixture lost"
+# into a statement about mixing in general: if CRPS is monotone in this
+# weight, no FIXED blend of the two beats simply taking the better one, and
+# the dashboard's volume-based weighting cannot rescue it either -- volume
+# would just be picking a point on this curve, and it does not know which
+# end is better.
+BLEND_WEIGHTS = [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
 def summarize(results: list[DateResult]) -> list[dict]:
@@ -540,12 +564,22 @@ def summarize(results: list[DateResult]) -> list[dict]:
             scored = [r.scores[name] for r in rows if name in r.scores]
             if not scored:
                 continue
+            hits = [s.ci68_hit for s in scored if s.ci68_hit is not None]
             entry["forecasts"][name] = {
                 "n": len(scored),
                 "crps": float(np.mean([s.crps for s in scored])),
                 "mad_mean": float(np.mean([s.abs_error_mean for s in scored])),
                 "mad_median": float(np.mean([s.abs_error_median for s in scored])),
-                "ci68_coverage": float(np.mean([s.ci68_hit for s in scored])),
+                "ci68_coverage": float(np.mean(hits)) if hits else None,
+            }
+
+        blended = [r for r in rows if len(r.blend_crps) == len(BLEND_WEIGHTS)]
+        if blended:
+            entry["blend_sweep"] = {
+                "n": len(blended),
+                "polymarket_share_to_crps": {
+                    str(w): float(np.mean([r.blend_crps[w] for r in blended])) for w in BLEND_WEIGHTS
+                },
             }
 
         paired = [r for r in rows if {"polymarket", "kalshi", "aggregate"} <= set(r.scores)]

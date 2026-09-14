@@ -184,6 +184,38 @@ SHRINK_BY_LEAD_HOURS = {6.0: 0.16, 24.0: 0.20, 72.0: 0.30, 144.0: 0.74}
 CI_WIDTH_MULT_BY_LEAD_HOURS = {6.0: 1.792, 24.0: 1.156, 72.0: 0.908, 144.0: 0.884}
 
 
+def _ci_width_multiplier(lead_hours: float) -> float:
+    """CI half-width multiplier at `lead_hours`.
+
+    Inside the measured range this is plain log-interpolation between the
+    anchors. BELOW the lowest anchor it tapers toward 1.0 (no correction)
+    instead of clamping at the 6h value, because clamping there is
+    measurably wrong: the aggregate backtest
+    (../../results/aggregate_forecast_backtest/report.md) scored these
+    forecasts at 5-45 minutes before resolution and found the clamped
+    1.79x widening pushed 68% intervals to 94-100% coverage. That multiplier
+    was measured on a 6-hour horizon; a forecast 5 minutes from resolution
+    is a different object, already nearly a spot quote, and has no
+    established need to be widened at all.
+
+    Note this taper is applied to the CI width and NOT to the longshot
+    shrink, which keeps its clamp. The two behave differently as lead time
+    goes to zero: an interval's required widening plausibly vanishes as the
+    forecast collapses onto spot, whereas a 5c contract minutes from
+    expiry is if anything even less likely to pay off than the 6h
+    measurement says. Tapering that toward "no correction" would be the
+    unjustified extrapolation, not the conservative one.
+
+    Above the highest anchor the clamp stands: the correction out there is
+    mild (0.884) and extrapolating a mild correction is low-risk.
+    """
+    lowest = min(CI_WIDTH_MULT_BY_LEAD_HOURS)
+    if lead_hours >= lowest:
+        return _log_interp(CI_WIDTH_MULT_BY_LEAD_HOURS, lead_hours)
+    mult_at_lowest = CI_WIDTH_MULT_BY_LEAD_HOURS[lowest]
+    return 1.0 + (mult_at_lowest - 1.0) * (max(lead_hours, 0.0) / lowest)
+
+
 def _log_interp(anchors: dict[float, float], x: float) -> float:
     """Interpolate `anchors` ({hours: value}) in log-hours space; clamps to
     the nearest measured value outside the anchors' range rather than
@@ -594,7 +626,7 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     # coverage; the same value is applied to every other level here (95%,
     # and CONFIDENCE_LEVELS below) for lack of a level-specific measurement
     # -- see module docstring step 8.
-    ci_mult = _log_interp(CI_WIDTH_MULT_BY_LEAD_HOURS, lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
+    ci_mult = _ci_width_multiplier(lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
 
     def _band(level: float) -> tuple[float, float]:
         half = level / 2.0

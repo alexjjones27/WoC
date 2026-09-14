@@ -25,9 +25,9 @@ def main():
         print("No usable events -- aborting.")
         return
 
-    print("Fetching BTC-USD hourly spot series (yfinance)...")
+    print("Fetching BTC-USD hourly spot series...")
     spot = cal.fetch_spot_series(events[0].date, today)
-    print(f"  {len(spot)} hourly spot points")
+    print(f"  {len(spot)} hourly spot points from {cal.SPOT_SOURCE_USED}")
 
     print("\nBuilding calibration report by lead time...")
     reports = cal.build_calibration_report(events, spot)
@@ -43,7 +43,30 @@ def main():
             "mad_error": r.mad_error, "rmse": r.rmse, "naive_mad_error": r.naive_mad_error,
             "beats_naive": beats_naive, "ci68_coverage": r.ci68_coverage, "brier_score": r.brier_score,
             "log_loss": r.log_loss, "calibration_bins": r.calibration_bins,
+            "median_mean_error": r.median_mean_error, "mad_median_error": r.mad_median_error,
+            "crps_market": r.crps_market, "crps_naive": r.crps_naive,
+            "crps_random_walk": r.crps_random_walk, "rw_ci68_coverage": r.rw_ci68_coverage,
+            "n_random_walk": r.n_random_walk,
         })
+
+    # Is the market's point estimate bad, or is our reconstruction of its
+    # open tails bad? The median barely moves under tail conventions; the
+    # mean does. If MAD(median) is much better than MAD(mean), the problem
+    # is the reconstruction, not the market.
+    print(f"\n{'lead':>6}  {'MAD(mean)':>10}  {'MAD(median)':>12}  {'naive_MAD':>10}  {'median beats naive':>19}")
+    for r in reports:
+        beats = r.mad_median_error < r.naive_mad_error if r.naive_mad_error == r.naive_mad_error else None
+        print(f"{r.lead_hours:>4}h  {r.mad_error:>10,.0f}  {r.mad_median_error:>12,.0f}  "
+              f"{r.naive_mad_error:>10,.0f}  {str(beats):>19}")
+
+    # A distribution deserves a distributional score, against a
+    # distributional baseline. CRPS is in dollars and reduces to |error|
+    # for a point forecast, so all three columns are comparable.
+    print(f"\n{'lead':>6}  {'CRPS market':>12}  {'CRPS naive':>11}  {'CRPS rand-walk':>15}  "
+          f"{'market 68% cov':>15}  {'rand-walk 68% cov':>18}  {'n_rw':>5}")
+    for r in reports:
+        print(f"{r.lead_hours:>4}h  {r.crps_market:>12,.0f}  {r.crps_naive:>11,.0f}  {r.crps_random_walk:>15,.0f}  "
+              f"{r.ci68_coverage:>14.1%}  {r.rw_ci68_coverage:>17.1%}  {r.n_random_walk:>5}")
 
     print("\nCalibration curves (predicted-probability bin -> empirical hit rate; perfect calibration = diagonal):")
     for r in reports:
@@ -60,6 +83,8 @@ def main():
     out_path.write_text(json.dumps({
         "n_events": len(events),
         "date_range": [str(events[0].date), str(events[-1].date)],
+        "spot_source": cal.SPOT_SOURCE_USED,
+        "realized_vol_window_hours": cal.REALIZED_VOL_WINDOW_HOURS,
         "lead_time_reports": rows,
     }, indent=2))
     print(f"\nsaved {out_path}")

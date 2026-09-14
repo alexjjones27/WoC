@@ -546,3 +546,123 @@ body {
   color: var(--text-muted);
   margin: 0 0 6px;
 }
+
+/* --- Implied probabilities: the card's headline -------------------------
+   Leads instead of the point forecast because it is the output the
+   calibration backtest actually validated -- see ForecastCard.tsx's
+   comment and results/btc_price_market_calibration/report.md. */
+.implied-probs {
+  padding: 14px 16px 6px;
+}
+.implied-probs-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 8px;
+}
+.implied-probs ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.implied-probs li {
+  display: grid;
+  grid-template-columns: minmax(56px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+.ip-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-sunken, rgba(127, 127, 127, 0.16));
+  overflow: hidden;
+}
+.ip-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--accent, #4a7fd4);
+}
+.ip-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 20px;
+  min-width: 3.2em;
+  text-align: right;
+}
+.ip-text {
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+}
+
+/* --- Point estimate: kept, but demoted to a reference row --------------- */
+.point-estimate {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.2));
+  font-size: 12.5px;
+}
+/* Deliberately a prose block, not a two-column row: the card is ~400px
+   wide in the grid, and a label/value split there squeezes the numbers
+   into a column narrow enough to break "$77,840" across lines. */
+.pe-row {
+  line-height: 1.55;
+}
+.pe-row-sub {
+  margin-top: 2px;
+}
+.pe-label {
+  color: var(--text-muted, #6b7280);
+  margin-right: 8px;
+}
+.pe-values {
+  font-variant-numeric: tabular-nums;
+}
+.pe-caveat {
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #a4681f;
+  background: rgba(250, 178, 25, 0.14);
+  border: 1px solid rgba(250, 178, 25, 0.45);
+  cursor: help;
+  white-space: nowrap;
+}
+.badge-note {
+  opacity: 0.75;
+  font-weight: 400;
+}
+.correction-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted, #6b7280);
+}
+.correction-note code {
+  font-size: 11px;
+}
+
+@media (max-width: 520px) {
+  .implied-probs li {
+    grid-template-columns: 1fr auto;
+  }
+  .ip-bar {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .ip-text {
+    white-space: normal;
+  }
+  .pe-caveat {
+    white-space: normal;
+    display: inline-block;
+    margin-left: 0;
+    margin-top: 3px;
+  }
+}

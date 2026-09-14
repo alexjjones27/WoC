@@ -19,4 +19,7 @@ fi
 
 echo "==> starting server on http://localhost:${PORT}"
 cd backend
-exec python3 -m uvicorn app:app --host 0.0.0.0 --port "${PORT}"
+# Bound to loopback: this is a local research dashboard with no auth, so
+# it should not be reachable from the rest of the network by default. Set
+# HOST=0.0.0.0 deliberately if you do want that.
+exec python3 -m uvicorn app:app --host "${HOST:-127.0.0.1}" --port "${PORT}"

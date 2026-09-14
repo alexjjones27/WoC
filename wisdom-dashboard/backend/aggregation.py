@@ -83,16 +83,15 @@ file.
     of the data rather than of whichever adapter happened to return first.
     Two adjustments, both
     derived from an empirical backtest (see
-    ../../../results/btc_price_market_calibration/report.md and
-    ../../../scripts/run_btc_price_market_calibration.py in the parent
-    Finance repo) that scored 96 resolved Polymarket "Bitcoin price on
-    <date>" markets against realized BTC spot price, by lead time before
-    resolution:
+    ../../results/btc_price_market_calibration/report.md and
+    ../../scripts/run_btc_price_market_calibration.py) that scored 97
+    resolved Polymarket "Bitcoin price on <date>" markets against realized
+    BTC spot price, by lead time before resolution:
       - LONGSHOT SHRINKAGE: buckets priced under ~10% consistently resolved
         Yes *less* often than their stated probability (e.g. at a 6h lead
         time, buckets priced ~5% actually hit only ~0.8% of the time) --
-        the same favorite-longshot-bias shape already found and traded in
-        this repo's football/tennis work. Each such bucket's probability is
+        the classic favorite-longshot-bias shape. Each such bucket's
+        probability is
         shrunk by a lead-time-dependent factor (SHRINK_BY_LEAD_HOURS), and
         the mass this removes is redistributed across that source's
         NON-longshot buckets (_longshot_corrected_probs). Doing this
@@ -154,6 +153,10 @@ HIGH_DIVERGENCE_PCT = 3.0
 
 GRID_CELLS = 300
 
+# How far past the central 96% of the distribution the threshold ladder
+# reaches, as a fraction of that band's width.
+THRESHOLD_SPAN_PAD = 0.25
+
 # Confidence levels shown as nested bands on the fan chart (see FanChart.tsx
 # and the /api/forecast payload's per-forecast `confidence_bands`). Edit
 # freely -- any set of levels in (0, 1) works, each just becomes one more
@@ -161,14 +164,14 @@ GRID_CELLS = 300
 CONFIDENCE_LEVELS = [0.70, 0.80, 0.90, 0.95, 0.99]
 
 # --- Calibration correction (see module docstring step 8 and
-# results/btc_price_market_calibration/report.md in the parent Finance repo
-# for how these were measured) ---
+# ../../results/btc_price_market_calibration/report.md for how these were
+# measured) ---
 APPLY_CALIBRATION_CORRECTIONS = True
 
 # Bucket-probability shrink factor by lead time (hours before resolution),
 # applied to buckets priced under LONGSHOT_PROB_THRESHOLD. Values are
 # (empirical hit rate) / (stated probability) for the ~5%-priced bucket,
-# pooled across 96 resolved events per lead time -- e.g. at a 6h lead,
+# pooled across 97 resolved events per lead time -- e.g. at a 6h lead,
 # buckets priced ~5% actually resolved Yes only ~16% of that stated rate.
 LONGSHOT_PROB_THRESHOLD = 0.10
 SHRINK_BY_LEAD_HOURS = {6.0: 0.16, 24.0: 0.20, 72.0: 0.30, 144.0: 0.74}
@@ -621,7 +624,17 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     # Each source's CDF is fixed across thresholds -- build them once here
     # rather than rebuilding every one of them inside the threshold loop.
     src_cdfs = [(src.source_name, _cdf_at_edges(grid_edges, np.array(src.pdf))) for src in sources]
-    for t in _nice_thresholds(float(grid_edges[0]), float(grid_edges[-1])):
+    # Thresholds span where the probability actually VARIES, not the whole
+    # padded grid. Spanning the grid put most rows out in the exponential
+    # tails, where every row reads 100% or 0% ("99% chance BTC is above
+    # $65,000") -- fine as filler, useless as information, and actively
+    # bad now that these probabilities are the card's headline. The central
+    # 96% of the distribution is the informative band; THRESHOLD_SPAN_PAD
+    # widens it slightly so a round number just outside still gets a row.
+    t_lo = _percentile(grid_edges, cdf_edges, 0.02)
+    t_hi = _percentile(grid_edges, cdf_edges, 0.98)
+    pad = (t_hi - t_lo) * THRESHOLD_SPAN_PAD
+    for t in _nice_thresholds(t_lo - pad, t_hi + pad):
         per_source_p = {}
         for src_name, src_cdf in src_cdfs:
             per_source_p[src_name] = _prob_gt(grid_edges, src_cdf, t)

@@ -1,6 +1,6 @@
 """Small shared HTTP helper. Deliberately stdlib-only (urllib) so the
 adapters package has no hard dependency beyond the standard library --
-consistent with this repo's existing Polymarket scripts (src/polymarket_final_pct.py).
+consistent with the research scripts in this repo's src/.
 """
 from __future__ import annotations
 

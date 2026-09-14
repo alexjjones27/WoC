@@ -10,11 +10,27 @@ const TIER_STYLE: Record<ConfidenceTier, { color: string; glyph: string; label: 
   low: { color: "#ec835a", glyph: "■", label: "Low confidence" },
 };
 
-export function ConfidenceBadge({ tier, totalVolume }: { tier: ConfidenceTier; totalVolume: number }) {
+export function ConfidenceBadge({
+  tier,
+  totalVolume,
+  effectiveVolume,
+}: {
+  tier: ConfidenceTier;
+  totalVolume: number;
+  effectiveVolume?: number;
+}) {
   const s = TIER_STYLE[tier];
+  // The tier is scored on concentration-ADJUSTED volume, so when the two
+  // differ materially the badge says so -- otherwise a $6M market backed by
+  // two wallets reads the same as $6M backed by a crowd.
+  const discounted = effectiveVolume !== undefined && effectiveVolume < totalVolume * 0.9;
+  const title = discounted
+    ? `Volume behind this forecast: ${formatCompactUsd(totalVolume)} traded, but concentrated among few wallets — scored as ${formatCompactUsd(effectiveVolume)}. See backend/concentration.py.`
+    : `Total market volume behind this forecast: ${formatCompactUsd(totalVolume)}`;
   return (
-    <span className="badge" style={{ color: s.color, borderColor: s.color }} title={`Total market volume behind this forecast: ${formatCompactUsd(totalVolume)}`}>
+    <span className="badge" style={{ color: s.color, borderColor: s.color }} title={title}>
       <span aria-hidden="true">{s.glyph}</span> {s.label}
+      {discounted && <span className="badge-note"> (concentration-adjusted)</span>}
     </span>
   );
 }

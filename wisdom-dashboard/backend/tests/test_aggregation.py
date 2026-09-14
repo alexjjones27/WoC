@@ -299,3 +299,29 @@ def test_touch_groups_keep_the_higher_volume_event_per_source_and_date():
     kept = [t for t in groups[0].sources if t.source_name == "polymarket"][0]
     assert kept.total_volume == 50_000.0
     assert errors == [{"source": "manifold", "error": "no oil markets"}]
+
+
+def test_thresholds_land_where_probability_actually_varies():
+    """Regression: the ladder used to span the whole padded grid, so most
+    rows sat out in the exponential tails reading 100% or 0% -- filler, and
+    actively bad now that these probabilities are the card's headline."""
+    f = aggregate_group([_dist("a", _uniform_over(99_000, 101_000), weight=50_000.0)])
+    probs = [r.prob_gt_aggregate for r in f.thresholds]
+    assert len(probs) >= 3
+    informative = [p for p in probs if 0.02 < p < 0.98]
+    assert len(informative) >= 2, probs
+    # And they bracket the distribution rather than sitting off in a tail.
+    assert min(r.threshold for r in f.thresholds) < f.median
+    assert max(r.threshold for r in f.thresholds) > f.median
+
+
+def test_thresholds_adapt_to_a_tight_distribution():
+    """A near-term card with a $2k-wide distribution needs a finer ladder
+    than a far-dated one spanning $40k; a fixed grid-span ladder gave the
+    tight one nothing usable."""
+    tight = aggregate_group([_dist("a", _uniform_over(99_500, 100_500))])
+    wide = aggregate_group([_dist("a", _uniform_over(80_000, 120_000))])
+    tight_step = tight.thresholds[1].threshold - tight.thresholds[0].threshold
+    wide_step = wide.thresholds[1].threshold - wide.thresholds[0].threshold
+    assert tight_step < wide_step
+    assert all(0.0 < r.prob_gt_aggregate < 1.0 for r in tight.thresholds[1:-1])

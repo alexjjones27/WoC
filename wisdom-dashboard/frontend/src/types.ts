@@ -19,6 +19,10 @@ export interface SourceBreakdown {
   liquidity: number | null;
   source_url: string | null;
   resolve_datetime_utc: string | null;
+  // Per source: sources sharing a target date can resolve at different
+  // times of day, and the calibration correction is lead-time-dependent.
+  lead_hours: number;
+  longshot_shrink_applied: number;
   pdf: number[];
   raw_note: string | null;
   is_play_money: boolean;
@@ -49,7 +53,11 @@ export interface AggregateForecast {
   ci_95: [number, number];
   confidence_score: number;
   confidence_tier: ConfidenceTier;
-  total_volume: number;
+  total_volume: number;      // raw dollars traded
+  // Volume after each source's trading-concentration discount. This, not
+  // total_volume, is what confidence_score/confidence_tier are computed
+  // from -- see backend/concentration.py.
+  effective_volume: number;
   disagreement_pct: number;
   high_divergence: boolean;
   thresholds: ThresholdRow[];

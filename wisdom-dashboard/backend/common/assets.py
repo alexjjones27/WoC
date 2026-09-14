@@ -6,7 +6,8 @@ AAPL, gold, ..." without touching the aggregator or the adapters themselves
 knows how to map that asset's ticker to the source's native symbol).
 
 Only assets with `enabled=True` are exposed by the API / selectable in the
-dashboard. BTC is the only one wired up end-to-end today (Phase 1); the
+dashboard. BTC and OIL are wired up end-to-end today (Phase 1) -- though
+see the README for what OIL's coverage currently lacks per platform. The
 others are listed disabled so the registry itself documents the intended
 shape of "add a new asset" without pretending those adapters exist yet.
 """

@@ -6,17 +6,14 @@ actually been -- at several lead times before resolution -- against the
 realized BTC price. This is the necessary first step before building any
 correction into wisdom-dashboard/backend/aggregation.py's live forecast,
 which currently just takes the market's numbers at face value with no
-empirical check on whether they're actually well-calibrated. Same
-measure-first-then-build convention as this repo's other favorite-longshot
-bias work (src/football_favorite_bias.py, src/tennis_favorite_bias.py):
-find out whether there's a real, exploitable bias before designing around one.
+empirical check on whether they're actually well-calibrated. Measure
+first, then build: find out whether there's a real, exploitable bias
+before designing around one.
 
 Sections:
     1. DATA FETCH        -- historical event discovery, bucket price history
-                             (Gamma + CLOB, same endpoints as
-                             src/polymarket_final_pct.py, independently
-                             re-implemented here to keep this module
-                             self-contained).
+                             (Gamma + CLOB, implemented here rather than
+                             shared, to keep this module self-contained).
     2. GROUND TRUTH       -- realized BTC-USD spot price (yfinance), used
                              instead of "which $2k Polymarket bucket won"
                              for dollar-denominated error metrics.
@@ -30,7 +27,7 @@ Sections:
     5. REPORT
 
 Key empirical findings from building this (documented here because they
-drove design decisions, same convention as polymarket_final_pct.py):
+drove design decisions):
   * The "Bitcoin price on <date>" event slug is a predictable
     `bitcoin-price-on-{month}-{day}-{year}` pattern; every guessed date in
     range returned a real (200) event via the slug lookup. The product's

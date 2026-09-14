@@ -56,14 +56,29 @@ export default function ForecastCard({ asset, forecast }: { asset: string; forec
         <div className="pe-row">
           <span className="pe-label">
             Point estimate
-            <span
-              className="pe-caveat"
-              title={
-                "Backtested on 97 resolved Polymarket events: the market's implied mean was 34-43% worse than simply assuming the price does not move, at every lead time from 6h to 6 days, and its median was no better. The full distribution also lost to a random walk widened by trailing realized volatility, including on interval coverage. Shown for reference and comparison between platforms -- the probabilities above are the part that measured well. See results/btc_price_market_calibration/report.md."
-              }
-            >
-              ⓘ backtests worse than spot
-            </span>
+            {forecast.spot_anchor_price !== null ? (
+              <span
+                className="pe-anchored"
+                title={
+                  "The market's own implied location measured worthless: fitting it against 97 resolved events put the weight on it at zero, and using it cost 14-35% of forecast accuracy. This forecast is centred on the current spot price (" +
+                  formatPrice(forecast.spot_anchor_price) +
+                  ") and its width scaled to " +
+                  Math.round((forecast.spot_anchor_scale ?? 1) * 100) +
+                  "% of what the market implied. Both fitted on a training split and validated out of sample. See results/forecast_model/report.md."
+                }
+              >
+                ⓘ anchored to spot
+              </span>
+            ) : (
+              <span
+                className="pe-caveat"
+                title={
+                  "No spot price was available this refresh, so this is the market's raw implied distribution. Backtested, that is a 14-35% worse forecast than the spot-anchored model. See results/forecast_model/report.md."
+                }
+              >
+                ⓘ unanchored (no spot)
+              </span>
+            )}
           </span>
           <span className="pe-values">
             mean {formatPrice(forecast.mean)} · median {formatPrice(forecast.median)} · σ {formatPrice(forecast.std)}
@@ -98,7 +113,7 @@ export default function ForecastCard({ asset, forecast }: { asset: string; forec
 function CorrectionNote({ forecast }: { forecast: AggregateForecast }) {
   const shrink = forecast.longshot_shrink_applied;
   const widen = forecast.ci_width_mult_applied;
-  if (shrink >= 1 && widen === 1) return null;
+  if (shrink >= 1 && widen === 1 && forecast.spot_anchor_price === null) return null;
   return (
     <p className="correction-note">
       Calibration correction at {forecast.lead_hours.toFixed(0)}h lead:{" "}
@@ -115,6 +130,13 @@ function CorrectionNote({ forecast }: { forecast: AggregateForecast }) {
         </>
       )}
       . Measured, not assumed — see <code>SHRINK_BY_LEAD_HOURS</code> in <code>aggregation.py</code>.
+      {forecast.spot_anchor_price !== null && (
+        <>
+          {" "}Forecast then centred on spot ({formatPrice(forecast.spot_anchor_price)}) and narrowed to{" "}
+          <strong>{Math.round((forecast.spot_anchor_scale ?? 1) * 100)}%</strong> of the market's implied
+          width — see <code>model.py</code>.
+        </>
+      )}
     </p>
   );
 }

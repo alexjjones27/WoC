@@ -1,6 +1,6 @@
 # WoC (Wisdom of Crowds)
 
-Five pieces, built together: a live dashboard, and four pieces of
+Six pieces, built together: a live dashboard, and four pieces of
 measurement that check whether the ideas the dashboard rests on actually
 hold. The measurement is the point. Where a check came back negative, the
 dashboard changed rather than the finding being buried.
@@ -34,6 +34,28 @@ dashboard changed rather than the finding being buried.
   interval covers 41%, the random walk's covers 67%). The dashboard's cards
   were restructured to lead with the probabilities and demote the point
   estimate as a result.
+
+- **[`src/forecast_model.py`](src/forecast_model.py)** — the piece that
+  turns the market's implied distribution into an actual price forecast,
+  shipped as [`wisdom-dashboard/backend/model.py`](wisdom-dashboard/backend/model.py).
+  Everything else here measures what the market *says*; this asks what we
+  should *predict*. Fitted on a chronological train split, reported on
+  held-out events, in
+  [`results/forecast_model/report.md`](results/forecast_model/report.md).
+
+  Two corrections and no new data source. The fitted weight on the market's
+  own implied **location** came out at **zero**, so the forecast is centred
+  on current spot instead, and its width narrowed to 65%. Out of sample
+  that is **14-35% better** than the raw market, and it overtakes the
+  random-walk baseline at three of four horizons where the raw market lost
+  to it by 15-45%. What the market still contributes is *shape* -- skew and
+  fat tails a normal cannot express -- worth 1-5%.
+
+  It also caught a published number that was wrong: the "41% interval
+  coverage at 6h" finding, which a live correction had been built on, was
+  an artifact of reading the interval off bucket midpoints. Measured
+  properly it is 72%, and the correction was widening a distribution that
+  was already too wide.
 
 - **[`src/aggregate_forecast_backtest.py`](src/aggregate_forecast_backtest.py)** —
   the dashboard's central claim, finally measured: does a volume-weighted
@@ -101,6 +123,7 @@ python3 -m pip install numpy pandas pytest matplotlib
 python3 scripts/run_btc_price_market_calibration.py
 python3 scripts/run_aggregate_forecast_backtest.py
 python3 scripts/run_prediction_market_trader_skill.py
+python3 scripts/run_forecast_model.py
 python3 -m pytest tests/
 ```
 

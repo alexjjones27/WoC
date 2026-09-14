@@ -16,6 +16,27 @@ COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 COINGECKO_ID = {"BTC": "bitcoin"}
 
 
+def fetch_current(asset: str) -> float | None:
+    """Current spot price, or None if unavailable.
+
+    This is a forecast INPUT, not decoration: model.py anchors every
+    forecast's location to it (see that file for why the market's own
+    location measured worthless). A stale or missing value degrades the
+    forecast, so this uses the dedicated simple-price endpoint rather than
+    reading the last point of the daily history series, which can be most
+    of a day old.
+    """
+    coin_id = COINGECKO_ID.get(asset.upper())
+    if not coin_id:
+        return None
+    try:
+        data = get_json(f"{COINGECKO_BASE}/simple/price", {"ids": coin_id, "vs_currencies": "usd"})
+        price = float((data or {}).get(coin_id, {}).get("usd"))
+        return price if price > 0 else None
+    except Exception:  # noqa: BLE001 -- never break the dashboard
+        return None
+
+
 def fetch_recent_history(asset: str, days: int = 30) -> list[dict]:
     """Returns [{"t_ms": epoch_millis, "price": float}, ...], oldest first.
     Empty list (never raises) if the asset isn't mapped, the request fails,

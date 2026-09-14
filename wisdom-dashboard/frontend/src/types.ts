@@ -63,7 +63,11 @@ export interface AggregateForecast {
   thresholds: ThresholdRow[];
   lead_hours: number;
   longshot_shrink_applied: number;
-  ci_width_mult_applied: number;
+  ci_width_mult_applied: number;  // retired, always 1.0 -- see backend/model.py
+  // The forecast model: the spot price this forecast was anchored to, and
+  // the width scale applied. null when no spot was available.
+  spot_anchor_price: number | null;
+  spot_anchor_scale: number | null;
   confidence_bands: ConfidenceBand[];
   sources: SourceBreakdown[];
 }
@@ -119,6 +123,7 @@ export interface DashboardPayload {
   touch_forecasts: TouchGroup[];
   touch_errors: { source: string; error: string }[];
   spot_history: SpotHistoryPoint[];
+  spot_now: number | null;
   sources_queried: { name: string; source_type: string }[];
   error?: string;
 }

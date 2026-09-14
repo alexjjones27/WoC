@@ -97,6 +97,48 @@ breakdown. Expand a card ("Details") for the full per-platform table, the
 whole threshold ladder, and a line stating exactly what the calibration
 correction did to that card.
 
+### The forecast model (`backend/model.py`)
+
+Everything in `aggregation.py` answers "what does the market say."
+`model.py` answers "what should we predict," and measurement says those are
+different questions. Two corrections, fitted on a chronological train split
+and validated on held-out events
+(`../results/forecast_model/report.md`):
+
+1. **Anchor the location to current spot.** The fitted weight on the
+   market's own implied location came out at **zero** -- at the boundary of
+   the grid, on pooled training data and independently at three of four
+   horizons. Using the market's view of *where* price will be costs 14-35%
+   of forecast accuracy versus simply reading the current price. Spot was
+   already being fetched every refresh and used only for the fan chart's
+   grey history line.
+2. **Narrow the width to 65%.** Once a curve is correctly centred it misses
+   less often, so the width appropriate for a mis-centred curve is too wide
+   for a well-centred one.
+
+Held-out CRPS, against the baselines the raw market lost to:
+
+| lead | market raw | model | random walk | naive spot |
+|---|---:|---:|---:|---:|
+| 144h | 2,376 | **2,039** | 2,028 | 2,473 |
+| 72h | 1,650 | **1,404** | 1,440 | 1,786 |
+| 24h | 1,014 | **717** | 752 | 916 |
+| 6h | 734 | **479** | 485 | 644 |
+
+The model beats the random walk at three horizons and ties at the longest,
+where the raw market lost to it by 15-45%. The wins over that baseline are
+narrow (1-5%) and the report says so; the win over the shipped behaviour
+is not.
+
+**The CI width correction is retired.** It widened intervals by up to 1.79x
+on the strength of a 41%-coverage measurement that turned out to be an
+artifact: the backtest computed the interval as the gap between two bucket
+*midpoints*, which at short horizons, where the distribution collapses into
+one or two $2,000 buckets, is far narrower than anything the market
+expressed. Measured against a faithful reconstruction the same events cover
+72%, not 41%, and the width correction that survives out-of-sample testing
+*narrows*. `ci_width_mult_applied` stays in the API at 1.0.
+
 **Why the probabilities lead and the point forecast does not.** The
 calibration backtest
 (`../results/btc_price_market_calibration/report.md`) found the market's

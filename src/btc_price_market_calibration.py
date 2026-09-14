@@ -367,6 +367,41 @@ class ReconstructedForecast:
     points: list[tuple[float, float]] = field(default_factory=list)
 
 
+def _bucket_quantile_fn(probs: list[tuple[BucketSeries, float]]):
+    """Quantile function of a bucketed distribution, with probability spread
+    uniformly inside each closed bucket and the two open tails extended by
+    one median bucket width. Deliberately the same shape the dashboard's
+    aggregation engine assumes, so this backtest and the live forecast are
+    describing the same object."""
+    finite_widths = [b.high - b.low for b, _ in probs
+                     if b.low is not None and b.high is not None and b.high > b.low]
+    pad = float(np.median(finite_widths)) if finite_widths else 2000.0
+
+    spans = []
+    for b, p in probs:
+        lo = b.low if b.low is not None else (b.high - pad if b.high is not None else 0.0)
+        hi = b.high if b.high is not None else (b.low + pad if b.low is not None else pad)
+        if hi <= lo:
+            hi = lo + 1e-6
+        spans.append((lo, hi, max(p, 0.0)))
+    spans.sort()
+    total = sum(p for _, _, p in spans)
+    if total <= 0:
+        return lambda q: float(spans[0][0]) if spans else 0.0
+
+    edges, cum = [spans[0][0]], [0.0]
+    acc = 0.0
+    for lo, hi, p in spans:
+        acc += p / total
+        edges.append(hi)
+        cum.append(acc)
+
+    def q_at(q: float) -> float:
+        return float(np.interp(q, cum, edges))
+
+    return q_at
+
+
 def reconstruct_forecast(event: ResolvedEvent, lead_hours: int) -> ReconstructedForecast | None:
     query_ts = event.resolve_ts - lead_hours * 3600
     earliest = min(t for b in event.buckets for t, _ in b.history)
@@ -401,16 +436,26 @@ def reconstruct_forecast(event: ResolvedEvent, lead_hours: int) -> Reconstructed
     prices = np.array([x[0] for x in points])
     ps = np.array([x[1] for x in points])
     mean = float(np.sum(prices * ps))
-    cdf = np.cumsum(ps)
 
-    def percentile(q):
-        idx = int(np.searchsorted(cdf, q))
-        idx = min(idx, len(prices) - 1)
-        return float(prices[idx])
+    # Quantiles come from a FAITHFUL reconstruction of the buckets --
+    # probability spread across each bucket's real width -- not from a
+    # step function over bucket midpoints.
+    #
+    # This is not a cosmetic choice. The midpoint step function returns an
+    # actual bucket midpoint for every quantile, so the 68% interval is the
+    # gap between two midpoints and ignores the width of the boundary
+    # buckets entirely. At short horizons, where the whole distribution
+    # collapses into one or two $2,000 buckets, that produced intervals far
+    # narrower than anything the market expressed, and the 6h coverage this
+    # backtest reported (41% against a nominal 68%) was mostly that
+    # artifact: measured properly the same events cover 72%. The dashboard's
+    # CI-widening correction was built on the artifact and has since been
+    # retired in favour of wisdom-dashboard/backend/model.py.
+    q_at = _bucket_quantile_fn(probs)
 
     return ReconstructedForecast(
-        lead_hours=lead_hours, mean=mean, median=percentile(0.5),
-        ci68=(percentile(0.16), percentile(0.84)), bucket_probs=probs,
+        lead_hours=lead_hours, mean=mean, median=q_at(0.5),
+        ci68=(q_at(0.16), q_at(0.84)), bucket_probs=probs,
         points=points,
     )
 

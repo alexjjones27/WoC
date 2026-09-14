@@ -59,10 +59,14 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
     results: list[SourceFetchResult] = []
     touch_results: list[TouchFetchResult] = []
     spot_history: list[dict] = []
-    with ThreadPoolExecutor(max_workers=max(len(asset.adapters) * 2 + 1, 1)) as pool:
+    spot_now: float | None = None
+    with ThreadPoolExecutor(max_workers=max(len(asset.adapters) * 2 + 2, 2)) as pool:
         futures = {pool.submit(_run_adapter, name, asset.symbol): ("point", name) for name in asset.adapters}
         futures.update({pool.submit(_run_adapter_touch, name, asset.symbol): ("touch", name) for name in asset.adapters})
         spot_future = pool.submit(spot_price.fetch_recent_history, asset.symbol, SPOT_HISTORY_DAYS)
+        # Current spot is a forecast INPUT now, not just the fan chart's
+        # history line -- see backend/model.py.
+        spot_now_future = pool.submit(spot_price.fetch_current, asset.symbol)
         for fut in as_completed(futures):
             kind, _name = futures[fut]
             (results if kind == "point" else touch_results).append(fut.result())
@@ -73,8 +77,12 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
             spot_history = spot_future.result()
         except Exception:  # noqa: BLE001
             spot_history = []
+        try:
+            spot_now = spot_now_future.result()
+        except Exception:  # noqa: BLE001
+            spot_now = None
 
-    forecasts, source_errors = build_dashboard(results)
+    forecasts, source_errors = build_dashboard(results, spot=spot_now)
     touch_groups, touch_errors = build_touch_groups(touch_results)
 
     payload = {
@@ -87,6 +95,7 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
         "touch_forecasts": [_touch_group_to_dict(g) for g in touch_groups],
         "touch_errors": touch_errors,
         "spot_history": spot_history,
+        "spot_now": spot_now,
         "sources_queried": [
             {"name": name, "source_type": getattr(get_adapter(name), "source_type", "unknown")}
             for name in asset.adapters

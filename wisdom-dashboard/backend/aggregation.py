@@ -126,6 +126,7 @@ from datetime import date, datetime, timezone
 
 import numpy as np
 
+import model
 from common.distribution import PriceDistribution, SourceFetchResult, TouchFetchResult, TouchForecast
 
 # A source with literally zero recorded volume/OI still gets a tiny nonzero
@@ -358,7 +359,12 @@ class AggregateForecast:
     thresholds: list[ThresholdRow]
     lead_hours: float              # weight-weighted across this group's sources
     longshot_shrink_applied: float  # 1.0 = no correction; the factor actually delivered
-    ci_width_mult_applied: float    # 1.0 = no correction
+    ci_width_mult_applied: float    # retired; see model.py. Always 1.0 now.
+    # The forecast model (model.py): whether the aggregate was anchored to
+    # spot, and the spot price it was anchored to. None means no spot was
+    # available and the raw market curve is being shown.
+    spot_anchor_price: float | None = None
+    spot_anchor_scale: float | None = None
     # Volume after each source's trading-concentration discount (see
     # concentration.py). `total_volume` is raw dollars traded; this is what
     # confidence_score/confidence_tier are computed from.
@@ -508,10 +514,17 @@ def _confidence_tier(total_volume: float) -> str:
     return "low"
 
 
-def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast | None:
+def aggregate_group(distributions: list[PriceDistribution], spot: float | None = None) -> AggregateForecast | None:
     """Combine every source's distribution for ONE target date into one
     AggregateForecast. Returns None if there's nothing usable (e.g. every
-    bucket resampled to zero mass)."""
+    bucket resampled to zero mass).
+
+    `spot` is the asset's current price. When given, the combined curve is
+    run through the forecast model (model.py) before any statistic is read
+    off it -- the step that turns "what the market says" into "what we
+    predict." Without it the raw market curve is returned, which the
+    backtest says is a 15-35% worse forecast, so the caller should pass it
+    whenever it has it."""
     if not distributions:
         return None
     grid_edges, tail_scale = _build_group_grid(distributions)
@@ -611,6 +624,19 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     shrink = _weighted(source_shrinks, 1.0)
 
     agg_pdf = weighted_pdf_sum / total_eff_weight
+
+    # --- the forecast model (model.py) ---
+    # Applied here, after mixing and before every statistic below, so that
+    # the mean, median, intervals, thresholds and per-card pdf all describe
+    # the forecast rather than the raw market curve.
+    spot_anchor_price = None
+    spot_anchor_scale = None
+    if spot is not None and model.APPLY_SPOT_ANCHORING and spot > 0:
+        grid_edges, agg_pdf = model.anchor_to_spot(grid_edges, agg_pdf, spot)
+        centers = (grid_edges[:-1] + grid_edges[1:]) / 2.0
+        spot_anchor_price = float(spot)
+        spot_anchor_scale = model.WIDTH_SCALE
+
     mean = float(np.sum(centers * agg_pdf))
     variance = float(np.sum(agg_pdf * (centers - mean) ** 2))
     std = math.sqrt(max(variance, 0.0))
@@ -626,7 +652,15 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     # coverage; the same value is applied to every other level here (95%,
     # and CONFIDENCE_LEVELS below) for lack of a level-specific measurement
     # -- see module docstring step 8.
-    ci_mult = _ci_width_multiplier(lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
+    # The CI width correction is RETIRED -- see model.py. It widened
+    # intervals by up to 1.79x on the strength of a 41%-coverage
+    # measurement that turned out to be an artifact of computing the
+    # interval as the gap between two bucket midpoints. Measured properly
+    # the same events cover 72%, and the width correction that survives
+    # out-of-sample testing NARROWS rather than widens, which is what
+    # model.WIDTH_SCALE now does. Left at 1.0 rather than deleted so the
+    # API field keeps its meaning for anything reading it.
+    ci_mult = 1.0
 
     def _band(level: float) -> tuple[float, float]:
         half = level / 2.0
@@ -697,12 +731,14 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
         lead_hours=lead_hours,
         longshot_shrink_applied=shrink,
         ci_width_mult_applied=ci_mult,
+        spot_anchor_price=spot_anchor_price,
+        spot_anchor_scale=spot_anchor_scale,
         confidence_bands=confidence_bands,
         sources=sources,
     )
 
 
-def build_dashboard(results: list[SourceFetchResult]) -> tuple[list[AggregateForecast], list[dict]]:
+def build_dashboard(results: list[SourceFetchResult], spot: float | None = None) -> tuple[list[AggregateForecast], list[dict]]:
     """Top-level entry point: pool every source's distributions, group by
     target date, aggregate each group. Returns (forecasts sorted by date,
     per-source errors so the UI can show "Kalshi: discovery failed" etc.
@@ -717,7 +753,7 @@ def build_dashboard(results: list[SourceFetchResult]) -> tuple[list[AggregateFor
 
     forecasts = []
     for target_date in sorted(groups):
-        forecast = aggregate_group(groups[target_date])
+        forecast = aggregate_group(groups[target_date], spot=spot)
         if forecast is not None:
             forecasts.append(forecast)
     return forecasts, source_errors

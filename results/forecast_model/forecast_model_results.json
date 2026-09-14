@@ -1,0 +1,594 @@
+{
+  "generated_at_utc": "2026-09-14T13:04:35.203342+00:00",
+  "n_cases": 385,
+  "n_events": 97,
+  "lead_hours": [
+    144,
+    72,
+    24,
+    6
+  ],
+  "spot_source": "none",
+  "staged_per_lead": [
+    {
+      "lead_hours": 144,
+      "n_train": 47,
+      "n_test": 47,
+      "baselines": {
+        "naive": {
+          "name": "naive (spot)",
+          "n": 47,
+          "crps": 2428.054680851064,
+          "mad": 2428.054680851064,
+          "coverage68": NaN,
+          "params": null
+        },
+        "random_walk": {
+          "name": "random walk",
+          "n": 47,
+          "crps": 2002.677897051241,
+          "mad": 2428.054680851064,
+          "coverage68": 0.8723404255319149,
+          "params": null
+        }
+      },
+      "stages": [
+        {
+          "name": "market, raw",
+          "params": {
+            "lambda": 1.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "market, raw",
+            "n": 47,
+            "crps": 2340.8002298857564,
+            "mad": 2917.093155319148,
+            "coverage68": 0.8723404255319149,
+            "params": {
+              "lambda": 1.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 2337.0033585675005
+        },
+        {
+          "name": "+ recentred on spot",
+          "params": {
+            "lambda": 0.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ recentred on spot",
+            "n": 47,
+            "crps": 2130.3892114584214,
+            "mad": 2428.054680851064,
+            "coverage68": 0.8723404255319149,
+            "params": {
+              "lambda": 0.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 2226.7318181631913
+        },
+        {
+          "name": "+ width rescaled",
+          "params": {
+            "lambda": 0.0,
+            "scale": 0.9,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ width rescaled",
+            "n": 47,
+            "crps": 2085.37802628329,
+            "mad": 2428.054680851064,
+            "coverage68": 0.8723404255319149,
+            "params": {
+              "lambda": 0.0,
+              "scale": 0.9,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 2220.7111751519874
+        },
+        {
+          "name": "+ pooled with random walk",
+          "params": {
+            "lambda": 0.0,
+            "scale": 0.9,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ pooled with random walk",
+            "n": 47,
+            "crps": 2085.37802628329,
+            "mad": 2428.054680851064,
+            "coverage68": 0.8723404255319149,
+            "params": {
+              "lambda": 0.0,
+              "scale": 0.9,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 2220.7111751519874
+        }
+      ]
+    },
+    {
+      "lead_hours": 72,
+      "n_train": 48,
+      "n_test": 49,
+      "baselines": {
+        "naive": {
+          "name": "naive (spot)",
+          "n": 49,
+          "crps": 1785.7993877551023,
+          "mad": 1785.7993877551023,
+          "coverage68": NaN,
+          "params": null
+        },
+        "random_walk": {
+          "name": "random walk",
+          "n": 49,
+          "crps": 1440.028962221763,
+          "mad": 1785.7993877551023,
+          "coverage68": 0.8367346938775511,
+          "params": null
+        }
+      },
+      "stages": [
+        {
+          "name": "market, raw",
+          "params": {
+            "lambda": 1.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "market, raw",
+            "n": 49,
+            "crps": 1650.4045998633112,
+            "mad": 1961.131934693877,
+            "coverage68": 0.8571428571428571,
+            "params": {
+              "lambda": 1.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 1459.5290961248818
+        },
+        {
+          "name": "+ recentred on spot",
+          "params": {
+            "lambda": 0.35,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ recentred on spot",
+            "n": 49,
+            "crps": 1517.6140261633784,
+            "mad": 1798.3185955102035,
+            "coverage68": 0.8571428571428571,
+            "params": {
+              "lambda": 0.35,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 1444.1284232321134
+        },
+        {
+          "name": "+ width rescaled",
+          "params": {
+            "lambda": 0.4,
+            "scale": 0.95,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ width rescaled",
+            "n": 49,
+            "crps": 1511.559306951423,
+            "mad": 1805.4628179591837,
+            "coverage68": 0.8367346938775511,
+            "params": {
+              "lambda": 0.4,
+              "scale": 0.95,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 1444.0588334159977
+        },
+        {
+          "name": "+ pooled with random walk",
+          "params": {
+            "lambda": 0.45,
+            "scale": 0.95,
+            "weight": 0.8
+          },
+          "test": {
+            "name": "+ pooled with random walk",
+            "n": 49,
+            "crps": 1495.2211995571445,
+            "mad": 1798.8218148571423,
+            "coverage68": 0.8367346938775511,
+            "params": {
+              "lambda": 0.45,
+              "scale": 0.95,
+              "weight": 0.8
+            }
+          },
+          "train_crps": 1443.1677284682967
+        }
+      ]
+    },
+    {
+      "lead_hours": 24,
+      "n_train": 48,
+      "n_test": 49,
+      "baselines": {
+        "naive": {
+          "name": "naive (spot)",
+          "n": 49,
+          "crps": 915.6655102040814,
+          "mad": 915.6655102040814,
+          "coverage68": NaN,
+          "params": null
+        },
+        "random_walk": {
+          "name": "random walk",
+          "n": 49,
+          "crps": 751.7715205582,
+          "mad": 915.6655102040814,
+          "coverage68": 0.7959183673469388,
+          "params": null
+        }
+      },
+      "stages": [
+        {
+          "name": "market, raw",
+          "params": {
+            "lambda": 1.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "market, raw",
+            "n": 49,
+            "crps": 1014.449882638243,
+            "mad": 1319.3525448979594,
+            "coverage68": 0.7142857142857143,
+            "params": {
+              "lambda": 1.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 838.2474004929232
+        },
+        {
+          "name": "+ recentred on spot",
+          "params": {
+            "lambda": 0.15,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ recentred on spot",
+            "n": 49,
+            "crps": 760.8868221799509,
+            "mad": 956.4541721428569,
+            "coverage68": 0.8163265306122449,
+            "params": {
+              "lambda": 0.15,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 786.5552419819087
+        },
+        {
+          "name": "+ width rescaled",
+          "params": {
+            "lambda": 0.15,
+            "scale": 0.85,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ width rescaled",
+            "n": 49,
+            "crps": 746.4406979609661,
+            "mad": 956.4541721428569,
+            "coverage68": 0.7755102040816326,
+            "params": {
+              "lambda": 0.15,
+              "scale": 0.85,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 782.7695207686307
+        },
+        {
+          "name": "+ pooled with random walk",
+          "params": {
+            "lambda": 0.15,
+            "scale": 0.85,
+            "weight": 0.95
+          },
+          "test": {
+            "name": "+ pooled with random walk",
+            "n": 49,
+            "crps": 746.0864358585193,
+            "mad": 953.5760733010203,
+            "coverage68": 0.7755102040816326,
+            "params": {
+              "lambda": 0.15,
+              "scale": 0.85,
+              "weight": 0.95
+            }
+          },
+          "train_crps": 782.7663083683392
+        }
+      ]
+    },
+    {
+      "lead_hours": 6,
+      "n_train": 48,
+      "n_test": 49,
+      "baselines": {
+        "naive": {
+          "name": "naive (spot)",
+          "n": 49,
+          "crps": 643.9034693877551,
+          "mad": 643.9034693877551,
+          "coverage68": NaN,
+          "params": null
+        },
+        "random_walk": {
+          "name": "random walk",
+          "n": 49,
+          "crps": 484.9236460622557,
+          "mad": 643.9034693877551,
+          "coverage68": 0.6326530612244898,
+          "params": null
+        }
+      },
+      "stages": [
+        {
+          "name": "market, raw",
+          "params": {
+            "lambda": 1.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "market, raw",
+            "n": 49,
+            "crps": 734.4914913869079,
+            "mad": 1005.8214265306129,
+            "coverage68": 0.7346938775510204,
+            "params": {
+              "lambda": 1.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 592.9609079797132
+        },
+        {
+          "name": "+ recentred on spot",
+          "params": {
+            "lambda": 0.0,
+            "scale": 1.0,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ recentred on spot",
+            "n": 49,
+            "crps": 510.6321250120278,
+            "mad": 643.9034693877551,
+            "coverage68": 0.8979591836734694,
+            "params": {
+              "lambda": 0.0,
+              "scale": 1.0,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 509.8268376659142
+        },
+        {
+          "name": "+ width rescaled",
+          "params": {
+            "lambda": 0.0,
+            "scale": 0.7,
+            "weight": 1.0
+          },
+          "test": {
+            "name": "+ width rescaled",
+            "n": 49,
+            "crps": 480.91254178700893,
+            "mad": 643.9034693877551,
+            "coverage68": 0.8163265306122449,
+            "params": {
+              "lambda": 0.0,
+              "scale": 0.7,
+              "weight": 1.0
+            }
+          },
+          "train_crps": 491.67956497378736
+        },
+        {
+          "name": "+ pooled with random walk",
+          "params": {
+            "lambda": 0.0,
+            "scale": 0.85,
+            "weight": 0.2
+          },
+          "test": {
+            "name": "+ pooled with random walk",
+            "n": 49,
+            "crps": 480.05068441934327,
+            "mad": 643.9034693877529,
+            "coverage68": 0.7551020408163265,
+            "params": {
+              "lambda": 0.0,
+              "scale": 0.85,
+              "weight": 0.2
+            }
+          },
+          "train_crps": 483.3402935255019
+        }
+      ]
+    }
+  ],
+  "global_fitted": {
+    "lambda": 0.0,
+    "scale": 0.55,
+    "weight": 1.0
+  },
+  "global_shipped": {
+    "lambda": 0.0,
+    "scale": 0.65,
+    "weight": 1.0
+  },
+  "held_out": [
+    {
+      "lead_hours": 144,
+      "n_test": 46,
+      "crps_raw": 2376.228095926669,
+      "crps_model": 2038.628347925088,
+      "crps_random_walk": 2027.9683369023464,
+      "crps_naive": 2472.8128260869566,
+      "coverage_model": 0.7391304347826086,
+      "coverage_raw": 0.8695652173913043
+    },
+    {
+      "lead_hours": 72,
+      "n_test": 49,
+      "crps_raw": 1650.4045998633112,
+      "crps_model": 1403.7367321000693,
+      "crps_random_walk": 1440.028962221763,
+      "crps_naive": 1785.7993877551023,
+      "coverage_model": 0.673469387755102,
+      "coverage_raw": 0.8571428571428571
+    },
+    {
+      "lead_hours": 24,
+      "n_test": 49,
+      "crps_raw": 1014.449882638243,
+      "crps_model": 717.1109738825515,
+      "crps_random_walk": 751.7715205582,
+      "crps_naive": 915.6655102040814,
+      "coverage_model": 0.7346938775510204,
+      "coverage_raw": 0.7142857142857143
+    },
+    {
+      "lead_hours": 6,
+      "n_test": 49,
+      "crps_raw": 734.4914913869079,
+      "crps_model": 478.6729564433243,
+      "crps_random_walk": 484.9236460622557,
+      "crps_naive": 643.9034693877551,
+      "coverage_model": 0.8163265306122449,
+      "coverage_raw": 0.7346938775510204
+    }
+  ],
+  "width_sweep": [
+    {
+      "scale": 0.55,
+      "crps": [
+        2026.9259612859078,
+        1400.604119731428,
+        719.5944302545865,
+        477.50480453451775
+      ],
+      "coverage": [
+        0.6086956521739131,
+        0.6530612244897959,
+        0.6938775510204082,
+        0.6938775510204082
+      ]
+    },
+    {
+      "scale": 0.65,
+      "crps": [
+        2038.628347925088,
+        1403.7367321000693,
+        717.1109738825515,
+        478.6729564433243
+      ],
+      "coverage": [
+        0.7391304347826086,
+        0.673469387755102,
+        0.7346938775510204,
+        0.8163265306122449
+      ]
+    },
+    {
+      "scale": 0.75,
+      "crps": [
+        2062.701386269246,
+        1416.7086166082588,
+        719.5424561246953,
+        484.1197069963362
+      ],
+      "coverage": [
+        0.8043478260869565,
+        0.7755102040816326,
+        0.7755102040816326,
+        0.8367346938775511
+      ]
+    },
+    {
+      "scale": 0.85,
+      "crps": [
+        2096.667662152707,
+        1436.4578679519107,
+        726.1566285276616,
+        492.936858565177
+      ],
+      "coverage": [
+        0.8695652173913043,
+        0.8163265306122449,
+        0.7959183673469388,
+        0.8571428571428571
+      ]
+    },
+    {
+      "scale": 0.95,
+      "crps": [
+        2138.0711289393457,
+        1461.3996497276462,
+        735.9037618232943,
+        504.24706222623445
+      ],
+      "coverage": [
+        0.8695652173913043,
+        0.8775510204081632,
+        0.8163265306122449,
+        0.8775510204081632
+      ]
+    },
+    {
+      "scale": 1.0,
+      "crps": [
+        2161.0633205336303,
+        1475.3797627723666,
+        741.7226185790043,
+        510.6321250120278
+      ],
+      "coverage": [
+        0.8695652173913043,
+        0.8979591836734694,
+        0.8163265306122449,
+        0.8979591836734694
+      ]
+    }
+  ]
+}

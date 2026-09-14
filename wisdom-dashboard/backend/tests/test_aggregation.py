@@ -189,7 +189,10 @@ def test_correction_reports_the_factor_it_actually_delivered(monkeypatch):
     expected = aggregation._log_interp(aggregation.SHRINK_BY_LEAD_HOURS, f.lead_hours)
     assert f.longshot_shrink_applied == pytest.approx(expected, rel=1e-6)
     assert f.lead_hours == pytest.approx(6.0, abs=0.1)
-    assert f.ci_width_mult_applied > 1.0  # 6h leads were overconfident -> widen
+    # The CI width correction is retired: the 41%-coverage measurement it
+    # was built on was an artifact of reading the interval off bucket
+    # midpoints. Width is now handled by model.WIDTH_SCALE instead.
+    assert f.ci_width_mult_applied == 1.0
 
 
 def test_correction_can_be_switched_off_wholesale(monkeypatch):
@@ -218,13 +221,12 @@ def test_lead_time_does_not_depend_on_source_order(monkeypatch):
     # (the 6h and 120h corrections differ by ~0.5 and ~0.9 respectively).
     assert forward.lead_hours == pytest.approx(backward.lead_hours, abs=1e-3)
     assert forward.longshot_shrink_applied == pytest.approx(backward.longshot_shrink_applied, abs=1e-5)
-    assert forward.ci_width_mult_applied == pytest.approx(backward.ci_width_mult_applied, abs=1e-5)
 
     # And it is genuinely a blend, not whichever source happened to be first.
     assert 6.0 < forward.lead_hours < 120.0
-    near_only = aggregate_group([a]).ci_width_mult_applied
-    far_only = aggregate_group([b]).ci_width_mult_applied
-    assert far_only < forward.ci_width_mult_applied < near_only
+    near_only = aggregate_group([a]).lead_hours
+    far_only = aggregate_group([b]).lead_hours
+    assert near_only < forward.lead_hours < far_only
 
 
 def test_each_source_carries_its_own_lead_time(monkeypatch):
@@ -325,3 +327,75 @@ def test_thresholds_adapt_to_a_tight_distribution():
     wide_step = wide.thresholds[1].threshold - wide.thresholds[0].threshold
     assert tight_step < wide_step
     assert all(0.0 < r.prob_gt_aggregate < 1.0 for r in tight.thresholds[1:-1])
+
+
+# --- the forecast model (model.py) -----------------------------------------
+#
+# What separates "what the market says" from "what we predict". These pin
+# the behaviour the held-out backtest justified, not the transform's
+# internals (those are in test_model.py).
+
+def test_spot_anchoring_moves_the_forecast_onto_spot():
+    """The single biggest measured improvement: the market's own location
+    is discarded and the curve is centred on the current price."""
+    dists = [_dist("polymarket", _uniform_over(90_000, 110_000))]
+    raw = aggregate_group(dists)
+    anchored = aggregate_group(dists, spot=104_000.0)
+    assert raw.median == pytest.approx(100_000, rel=1e-2)
+    assert anchored.median == pytest.approx(104_000, rel=1e-3)
+    assert anchored.spot_anchor_price == 104_000.0
+
+
+def test_spot_anchoring_narrows_rather_than_widens():
+    """The correction this replaced widened intervals by up to 1.79x. The
+    one that survived out-of-sample testing goes the other way."""
+    dists = [_dist("a", _uniform_over(90_000, 110_000))]
+    raw = aggregate_group(dists)
+    anchored = aggregate_group(dists, spot=100_000.0)
+    raw_width = raw.ci_68[1] - raw.ci_68[0]
+    new_width = anchored.ci_68[1] - anchored.ci_68[0]
+    assert new_width < raw_width
+    assert new_width / raw_width == pytest.approx(aggregation.model.WIDTH_SCALE, rel=0.05)
+
+
+def test_thresholds_and_bands_describe_the_anchored_forecast():
+    """Everything downstream has to be read off the model's output, not the
+    raw market curve -- otherwise the card's headline probabilities would
+    describe a distribution the forecast no longer is."""
+    dists = [_dist("a", _uniform_over(90_000, 110_000))]
+    anchored = aggregate_group(dists, spot=106_000.0)
+    # P(above spot) should sit near 50% once the curve is centred there.
+    nearest = min(anchored.thresholds, key=lambda r: abs(r.threshold - 106_000))
+    assert 0.3 < nearest.prob_gt_aggregate < 0.7
+    assert anchored.ci_95[0] < 106_000 < anchored.ci_95[1]
+    assert sum(anchored.pdf) == pytest.approx(1.0)
+
+
+def test_no_spot_leaves_the_market_curve_untouched():
+    """A missing spot price degrades the forecast but must never break it."""
+    dists = [_dist("a", _uniform_over(90_000, 110_000))]
+    for spot in (None, 0.0, -5.0):
+        f = aggregate_group(dists, spot=spot)
+        assert f is not None
+        assert f.median == pytest.approx(100_000, rel=1e-2)
+        assert f.spot_anchor_price is None
+
+
+def test_anchoring_survives_spot_far_outside_the_market_grid():
+    """The regression the quantile-transform-and-rebin approach exists for:
+    shifting the existing grid instead would push most of the mass off the
+    end whenever spot sat well outside the market's range."""
+    dists = [_dist("a", _uniform_over(90_000, 110_000))]
+    f = aggregate_group(dists, spot=180_000.0)
+    assert f.median == pytest.approx(180_000, rel=1e-3)
+    assert sum(f.pdf) == pytest.approx(1.0)
+    assert f.grid_edges[0] < 180_000 < f.grid_edges[-1]
+
+
+def test_build_dashboard_passes_spot_through():
+    ok = SourceFetchResult(
+        source_name="a", source_type="prediction_market",
+        distributions=[_dist("a", _uniform_over(90_000, 110_000))],
+    )
+    forecasts, _ = build_dashboard([ok], spot=97_500.0)
+    assert forecasts[0].median == pytest.approx(97_500, rel=1e-3)

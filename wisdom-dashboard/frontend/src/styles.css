@@ -634,6 +634,17 @@ body {
   cursor: help;
   white-space: nowrap;
 }
+.pe-anchored {
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #1a6b8a;
+  background: rgba(42, 120, 214, 0.13);
+  border: 1px solid rgba(42, 120, 214, 0.42);
+  cursor: help;
+  white-space: nowrap;
+}
 .badge-note {
   opacity: 0.75;
   font-weight: 400;
@@ -659,7 +670,7 @@ body {
   .ip-text {
     white-space: normal;
   }
-  .pe-caveat {
+  .pe-caveat, .pe-anchored {
     white-space: normal;
     display: inline-block;
     margin-left: 0;

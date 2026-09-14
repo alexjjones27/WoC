@@ -100,7 +100,7 @@ def _plot(reports, out_dir):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
 
     ax = axes[0]
     leads = [r.lead_hours for r in reports]
@@ -124,6 +124,20 @@ def _plot(reports, out_dir):
     ax.set_ylabel("empirical hit rate")
     ax.set_title("Bucket-probability calibration")
     ax.legend(fontsize=8)
+
+    # Panel 3: the distributional comparison. A prediction market emits a
+    # distribution, so the honest benchmark is another distribution, not
+    # just a point forecast.
+    ax = axes[2]
+    ax.plot(leads, [r.crps_market for r in reports], marker="o", label="market CRPS ($)")
+    ax.plot(leads, [r.crps_naive for r in reports], marker="o", label="naive point CRPS ($)")
+    ax.plot(leads, [r.crps_random_walk for r in reports], marker="o",
+            label="random walk + realized vol CRPS ($)")
+    ax.set_xlabel("lead time before resolution (hours)")
+    ax.set_ylabel("CRPS ($, lower is better)")
+    ax.set_title("Distributional accuracy by lead time")
+    ax.legend(fontsize=8)
+    ax.invert_xaxis()
 
     fig.tight_layout()
     path = out_dir / "calibration_plots.png"

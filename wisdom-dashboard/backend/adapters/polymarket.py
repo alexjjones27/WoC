@@ -45,7 +45,7 @@ concentration (see ../concentration.py): a market's dollar volume can come
 from a broad crowd or from a handful of large wallets, and raw volume alone
 can't tell those apart. Confirmed empirically (not assumed) across 6 live
 BTC/OIL markets spanning $1.7k-$6.8M volume -- see
-../../results/polymarket_trader_concentration/report.md -- every one showed
+../../../results/polymarket_trader_concentration/report.md -- every one showed
 real concentration, from ~1-2 effective independent traders on the
 thinnest daily buckets to ~20 on the most diffuse. Kalshi/Manifold don't
 get this treatment (no public trade-level data to measure it from), a real

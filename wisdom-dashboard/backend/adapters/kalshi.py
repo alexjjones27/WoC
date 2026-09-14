@@ -38,7 +38,7 @@ work this sits alongside):
     must be non-increasing in strike, but adjacent live quotes can violate
     that from ordinary bid/ask noise. Fits the closest monotone curve to
     the WHOLE ladder at once (weighted by each strike's own depth/spread-
-    derived confidence) via ../../isotonic.py before differencing.
+    derived confidence) via ../isotonic.py before differencing.
 
 Excluded from `fetch()` (the point-in-time pipeline): monthly/quarterly
 one-touch-max series (BTC: KXBTCMAXM/KXBTCMAXQ; OIL: has no currently-open

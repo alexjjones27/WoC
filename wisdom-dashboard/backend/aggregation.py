@@ -76,7 +76,12 @@ file.
     that.
 
 8.  CALIBRATION CORRECTION (applied before steps 3-5, i.e. to each source's
-    raw buckets before they're resampled/mixed): two adjustments, both
+    raw buckets before they're resampled/mixed). Lead time is computed PER
+    SOURCE, since sources sharing a target date can still resolve at
+    different times of day; the group-level `lead_hours` reported on the
+    card is the weight-weighted combination of those, so it is a property
+    of the data rather than of whichever adapter happened to return first.
+    Two adjustments, both
     derived from an empirical backtest (see
     ../../../results/btc_price_market_calibration/report.md and
     ../../../scripts/run_btc_price_market_calibration.py in the parent
@@ -88,9 +93,16 @@ file.
         time, buckets priced ~5% actually hit only ~0.8% of the time) --
         the same favorite-longshot-bias shape already found and traded in
         this repo's football/tennis work. Each such bucket's probability is
-        shrunk by a lead-time-dependent factor (SHRINK_BY_LEAD_HOURS) before
-        the removed mass gets redistributed across the rest of that
-        source's buckets by the normal per-source renormalization (step 3).
+        shrunk by a lead-time-dependent factor (SHRINK_BY_LEAD_HOURS), and
+        the mass this removes is redistributed across that source's
+        NON-longshot buckets (_longshot_corrected_probs). Doing this
+        explicitly matters: leaning on step 3's renormalization instead
+        scales the shrunk buckets back up along with everything else, so
+        the factor actually delivered is shrink/mass rather than shrink --
+        with 40% of a source's mass in sub-threshold buckets at a 6h lead,
+        an intended 0.16 arrives as 0.24. AggregateForecast
+        .longshot_shrink_applied reports the factor that was really
+        delivered, not the one looked up in the table.
       - CI WIDTH RECALIBRATION: the backtest's stated 68% interval actually
         covered the realized price only ~42% of the time at a 6-hour lead
         (badly overconfident) but ~74-88% of the time at 3-6 days out (a
@@ -199,6 +211,58 @@ def _lead_hours(resolve_iso: str | None, target_date: date) -> float:
     return max((resolve_dt - datetime.now(timezone.utc)).total_seconds() / 3600.0, 0.0)
 
 
+def _longshot_corrected_probs(buckets, shrink: float) -> tuple[list[float], float]:
+    """Apply the longshot shrink (module docstring step 8) to one source's
+    buckets, moving the mass it removes onto that source's NON-longshot
+    buckets only. Returns (corrected probs aligned to `buckets`, normalized
+    to sum to 1, and the shrink factor actually realized).
+
+    Why this isn't just `prob * shrink` followed by step 3's renormalization:
+    renormalizing divides EVERY bucket by the post-shrink total, which
+    scales the shrunk buckets back up along with the rest, so the factor
+    actually delivered is `shrink / mass`, not `shrink`. With 40% of a
+    source's mass in sub-threshold buckets at a 6h lead, an intended 0.16
+    arrives as 0.24 -- barely half the correction the backtest called for,
+    and the shortfall grows with how much mass sits in the tail. Explicitly
+    redistributing onto the rest is what makes the delivered factor equal
+    the measured one.
+
+    The realized factor is `shrink` in the ordinary case and 1.0 when there
+    is nothing to redistribute ONTO (every bucket below threshold, so the
+    shrink is a uniform scaling that renormalization would undo exactly) --
+    reported rather than silently assumed, see
+    AggregateForecast.longshot_shrink_applied.
+    """
+    probs = [max(float(b.prob), 0.0) for b in buckets]
+    total = sum(probs)
+    if total <= 0:
+        return probs, 1.0
+    # Always returned on the normalized scale, including the no-op paths
+    # below, so the caller gets one consistent contract.
+    if shrink >= 1.0:
+        return [p / total for p in probs], 1.0
+
+    is_longshot = [p < LONGSHOT_PROB_THRESHOLD for p in probs]
+    longshot_mass = sum(p for p, ls in zip(probs, is_longshot) if ls)
+    rest_mass = total - longshot_mass
+    # Nothing to redistribute onto: shrinking every bucket by the same
+    # factor is a no-op once renormalized, so say so instead of claiming a
+    # correction that cannot land.
+    if rest_mass <= 0 or longshot_mass <= 0:
+        return [p / total for p in probs], 1.0
+
+    # Target, expressed on the normalized scale: each longshot bucket ends
+    # at `shrink` times its normalized probability, and the rest share what
+    # that frees up, in proportion to their own size.
+    freed = (1.0 - shrink) * (longshot_mass / total)
+    rest_scale = (rest_mass / total + freed) / (rest_mass / total)
+    out = [
+        (p / total) * shrink if ls else (p / total) * rest_scale
+        for p, ls in zip(probs, is_longshot)
+    ]
+    return out, shrink
+
+
 @dataclass
 class ThresholdRow:
     threshold: float
@@ -219,6 +283,11 @@ class SourceBreakdown:
     source_url: str | None
     resolve_datetime_utc: str | None
     pdf: list[float]
+    # Per-source, because sources sharing a target date can resolve at
+    # different times of day and the calibration correction is
+    # lead-time-dependent.
+    lead_hours: float = 0.0
+    longshot_shrink_applied: float = 1.0  # 1.0 = no correction
     raw_note: str | None = None
     is_play_money: bool = False
     concentration_discount: float | None = None
@@ -252,9 +321,13 @@ class AggregateForecast:
     disagreement_pct: float
     high_divergence: bool
     thresholds: list[ThresholdRow]
-    lead_hours: float
-    longshot_shrink_applied: float  # 1.0 = no correction
+    lead_hours: float              # weight-weighted across this group's sources
+    longshot_shrink_applied: float  # 1.0 = no correction; the factor actually delivered
     ci_width_mult_applied: float    # 1.0 = no correction
+    # Volume after each source's trading-concentration discount (see
+    # concentration.py). `total_volume` is raw dollars traded; this is what
+    # confidence_score/confidence_tier are computed from.
+    effective_volume: float = 0.0
     confidence_bands: list[ConfidenceBand] = field(default_factory=list)
     sources: list[SourceBreakdown] = field(default_factory=list)
 
@@ -304,8 +377,10 @@ def _resample_open_high(low: float, prob: float, scale: float, grid_edges: np.nd
 
 # How many exponential half-lives (in units of TAIL_SCALE) the grid pads
 # beyond the outermost real bucket edge -- at PAD_HALF_LIVES=8,
-# exp(-8) ~= 0.0003 of that tail's mass falls outside the grid entirely
-# (silently dropped, not renormalized back in -- negligible at this depth).
+# exp(-8) ~= 0.0003 of that tail's mass falls off the end of the grid.
+# Step 3's per-source renormalization folds that sliver back in across the
+# whole distribution rather than leaving it dropped; either way it is
+# negligible at this depth.
 PAD_HALF_LIVES = 8.0
 
 
@@ -410,23 +485,31 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     centers = (grid_edges[:-1] + grid_edges[1:]) / 2.0
 
     ref = distributions[0]
-    lead_hours = _lead_hours(ref.resolve_datetime_utc, ref.target_date)
-    shrink = _log_interp(SHRINK_BY_LEAD_HOURS, lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
 
     weighted_pdf_sum = np.zeros(len(centers))
     total_eff_weight = 0.0
     total_real_volume = 0.0
+    total_effective_volume = 0.0
     sources: list[SourceBreakdown] = []
     source_means: list[tuple[float, float]] = []  # (mean, weight) for disagreement calc
+    source_leads: list[tuple[float, float]] = []  # (lead_hours, weight)
+    source_shrinks: list[tuple[float, float]] = []  # (realized shrink, weight)
 
     for d in distributions:
+        # Lead time is computed PER SOURCE, not once for the group: sources
+        # sharing a target date can still resolve at different times of day
+        # (a Kalshi KXBTCD ladder vs. a Polymarket event), and the
+        # calibration correction is lead-time-dependent. Reading it off
+        # whichever distribution happened to land first in the list made the
+        # correction depend on adapter completion order -- the same card
+        # could get a different correction between two refreshes with no
+        # change in the underlying data.
+        d_lead_hours = _lead_hours(d.resolve_datetime_utc, d.target_date)
+        d_shrink = _log_interp(SHRINK_BY_LEAD_HOURS, d_lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
+        corrected, realized_shrink = _longshot_corrected_probs(d.buckets, d_shrink)
+
         pdf = np.zeros(len(centers))
-        for b in d.buckets:
-            # Calibration correction (step 8): shrink longshot buckets
-            # toward the empirically-measured lower hit rate; the mass this
-            # removes is restored proportionally to the rest of this
-            # source's buckets by the renormalization a few lines below.
-            prob = b.prob * shrink if b.prob < LONGSHOT_PROB_THRESHOLD else b.prob
+        for b, prob in zip(d.buckets, corrected):
             if b.low is None and b.high is not None:
                 pdf += _resample_open_low(b.high, prob, tail_scale, grid_edges)
             elif b.high is None and b.low is not None:
@@ -445,9 +528,18 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
         weighted_pdf_sum += eff_weight * pdf
         total_eff_weight += eff_weight
         total_real_volume += d.volume or 0.0
+        # Confidence is scored on concentration-ADJUSTED volume (see
+        # concentration.py): dollar volume that turns out to be two wallets
+        # trading with each other is not the same evidence as the same
+        # dollars spread across a crowd, and the badge is the number a
+        # reader actually acts on. `total_volume` below stays the raw
+        # figure so the UI can still show real dollars traded.
+        total_effective_volume += (d.volume or 0.0) * (d.concentration_discount if d.concentration_discount is not None else 1.0)
 
         mean_s = float(np.sum(centers * pdf))
         source_means.append((mean_s, eff_weight))
+        source_leads.append((d_lead_hours, eff_weight))
+        source_shrinks.append((realized_shrink, eff_weight))
         sources.append(SourceBreakdown(
             source_name=d.source_name,
             source_type=d.source_type,
@@ -459,6 +551,8 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
             liquidity=d.liquidity,
             source_url=d.source_url,
             resolve_datetime_utc=d.resolve_datetime_utc,
+            lead_hours=d_lead_hours,
+            longshot_shrink_applied=realized_shrink,
             pdf=pdf.tolist(),
             raw_note=d.raw_note,
             is_play_money=d.is_play_money,
@@ -470,6 +564,16 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
 
     if total_eff_weight <= 0 or not sources:
         return None
+
+    def _weighted(pairs: list[tuple[float, float]], default: float) -> float:
+        tw = sum(w for _, w in pairs)
+        return (sum(v * w for v, w in pairs) / tw) if tw > 0 else default
+
+    # One number for the card and for the CI rescale below, combined the
+    # same way everything else here combines sources (by weight) rather
+    # than by picking one arbitrarily.
+    lead_hours = _weighted(source_leads, 0.0)
+    shrink = _weighted(source_shrinks, 1.0)
 
     agg_pdf = weighted_pdf_sum / total_eff_weight
     mean = float(np.sum(centers * agg_pdf))
@@ -514,11 +618,13 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     # Compute per-source threshold probabilities from each source's own pdf
     # (built above) rather than re-deriving from raw buckets.
     threshold_rows: list[ThresholdRow] = []
+    # Each source's CDF is fixed across thresholds -- build them once here
+    # rather than rebuilding every one of them inside the threshold loop.
+    src_cdfs = [(src.source_name, _cdf_at_edges(grid_edges, np.array(src.pdf))) for src in sources]
     for t in _nice_thresholds(float(grid_edges[0]), float(grid_edges[-1])):
         per_source_p = {}
-        for src in sources:
-            src_cdf = _cdf_at_edges(grid_edges, np.array(src.pdf))
-            per_source_p[src.source_name] = _prob_gt(grid_edges, src_cdf, t)
+        for src_name, src_cdf in src_cdfs:
+            per_source_p[src_name] = _prob_gt(grid_edges, src_cdf, t)
         threshold_rows.append(ThresholdRow(
             threshold=t,
             prob_gt_aggregate=_prob_gt(grid_edges, cdf_edges, t),
@@ -536,9 +642,10 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
         std=std,
         ci_68=ci_68,
         ci_95=ci_95,
-        confidence_score=_confidence_score(total_real_volume),
-        confidence_tier=_confidence_tier(total_real_volume),
+        confidence_score=_confidence_score(total_effective_volume),
+        confidence_tier=_confidence_tier(total_effective_volume),
         total_volume=total_real_volume,
+        effective_volume=total_effective_volume,
         disagreement_pct=disagreement_pct,
         high_divergence=disagreement_pct > HIGH_DIVERGENCE_PCT and len(sources) >= 2,
         thresholds=threshold_rows,

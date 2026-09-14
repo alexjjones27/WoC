@@ -66,7 +66,13 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
         for fut in as_completed(futures):
             kind, _name = futures[fut]
             (results if kind == "point" else touch_results).append(fut.result())
-        spot_history = spot_future.result()
+        # Belt-and-suspenders, matching _run_adapter/_run_adapter_touch:
+        # the spot line is a nice-to-have on the fan chart, never a reason
+        # to fail the whole payload.
+        try:
+            spot_history = spot_future.result()
+        except Exception:  # noqa: BLE001
+            spot_history = []
 
     forecasts, source_errors = build_dashboard(results)
     touch_groups, touch_errors = build_touch_groups(touch_results)

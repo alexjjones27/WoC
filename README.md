@@ -35,6 +35,20 @@ Four pieces, built together:
   applies the concentration half of this as a weight discount (Polymarket
   only — Kalshi/Manifold don't expose the trade-level data this needs).
 
+- **[`equity-forecaster/`](equity-forecaster/)** — the same wisdom-of-crowds
+  question asked of the sell-side: can per-analyst price targets be aggregated
+  into a useful probability distribution over a stock's price 12 months out?
+  Built as a research pipeline, not a tool — an append-only point-in-time store,
+  a data-quality gate that has to pass before anything downstream is allowed to
+  run, and a Stage 2 de-biaser that strips each firm's habitual multiple of
+  spot, an empirically fitted age decay (fitted, or explicitly refused — never
+  an assumed half-life), and the beta-scaled sector move. **Stages 1–2 are
+  built; the validation stages that would decide whether any of it beats spot
+  are deliberately not**, and every report says so. No vendor credential was
+  available, so the demo runs on a clearly-labelled simulated panel over real
+  prices; see that folder's README for what is verified, what is not, and the
+  list of known limitations.
+
 - **[`src/prediction_market_trader_skill.py`](src/prediction_market_trader_skill.py)** —
   have individual Polymarket traders actually been good at predicting BTC
   and oil prices, and is it real skill or noise? Scores every trade

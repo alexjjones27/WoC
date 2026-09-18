@@ -1,0 +1,11 @@
+numpy>=1.26
+pandas>=2.0
+duckdb>=1.0
+pytz>=2024.1
+
+# tests
+pytest>=8.0
+
+# notebooks only; the CLI and the library run without these
+matplotlib>=3.8
+jupyterlab>=4.0

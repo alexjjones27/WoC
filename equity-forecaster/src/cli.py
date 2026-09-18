@@ -34,9 +34,11 @@ def cmd_sources(args) -> int:
         any_ok |= ok
     print("\nconsensus-only sources (benchmark, never an input):")
     from .ingest.finnhub import FinnhubConsensusClient
+    from .pipeline import CONSENSUS_CLIENTS
 
-    ok, reason = FinnhubConsensusClient().available()
-    print(f"  {'finnhub':<12} {'AVAILABLE' if ok else 'unavailable'}   {reason}")
+    for name, cls in {"finnhub": FinnhubConsensusClient, **CONSENSUS_CLIENTS}.items():
+        ok, reason = cls().available()
+        print(f"  {name:<12} {'AVAILABLE' if ok else 'unavailable'}   {reason}")
     print("\nprice / corporate actions:")
     print(f"  {'yahoo':<12} AVAILABLE    no credential required")
     if not any_ok:
@@ -45,29 +47,54 @@ def cmd_sources(args) -> int:
     return 0
 
 
+def _resolve_tickers(args) -> list[str]:
+    """Expand --universe into the configured sector-mapped names."""
+    if getattr(args, "universe", False):
+        return sorted(config.TICKER_SECTOR_ETF)
+    return [t.upper() for t in args.tickers]
+
+
 def cmd_ingest(args) -> int:
     con = _open(args)
     start = _parse_date(args.start, date.today() - timedelta(days=365 * 8))
     end = _parse_date(args.end, date.today())
-    for ticker in args.tickers:
-        print(f"\ningesting {ticker.upper()} ({start} .. {end})")
-        s = ingest_ticker(
-            con, ticker, start=start, end=end,
-            sources=args.sources, allow_synthetic=args.allow_synthetic,
-            synthetic_seed=args.seed,
-        )
-        print(f"  prices     {s.price_rows:>7} rows, {s.split_rows} split events, "
-              f"{s.history_start} .. {s.history_end}")
-        print(f"  targets    offered {s.targets['offered']}, inserted "
-              f"{s.targets['inserted']}, duplicate {s.targets['duplicate']}, "
-              f"restated {s.targets['restated']}")
-        print(f"  sources    used: {', '.join(s.sources_used)}")
-        for name, why in s.sources_skipped.items():
-            print(f"             skipped {name}: {why}")
-        if s.synthetic:
-            print("  *** SIMULATED PANEL -- output is not evidence about this stock ***")
+    tickers = _resolve_tickers(args)
+    failures = 0
+    for i, ticker in enumerate(tickers, 1):
+        print(f"\n[{i}/{len(tickers)}] ", end="")
+        try:
+            failures += _ingest_one(con, ticker, start, end, args)
+        except Exception as exc:
+            failures += 1
+            print(f"{ticker}: FAILED {type(exc).__name__}: {exc}")
+    print(f"\ndone: {len(tickers) - failures}/{len(tickers)} tickers ingested")
     con.close()
-    return 0
+    return 0 if failures < len(tickers) else 1
+
+
+def _ingest_one(con, ticker: str, start: date, end: date, args) -> int:
+    """Ingest one ticker and print its summary. Returns 1 if nothing landed."""
+    print(f"{ticker} ({start} .. {end})")
+    s = ingest_ticker(
+        con, ticker, start=start, end=end,
+        sources=args.sources, allow_synthetic=args.allow_synthetic,
+        synthetic_seed=args.seed,
+    )
+    print(f"  prices     {s.price_rows:>7} rows, {s.split_rows} split events, "
+          f"{s.history_start} .. {s.history_end}")
+    print(f"  targets    offered {s.targets['offered']}, inserted "
+          f"{s.targets['inserted']}, duplicate {s.targets['duplicate']}, "
+          f"restated {s.targets['restated']}")
+    print(f"  sources    used: {', '.join(s.sources_used) or 'none'}")
+    for name, why in s.sources_skipped.items():
+        print(f"             skipped {name}: {why}")
+    if s.consensus_rows:
+        print(f"  consensus  {s.consensus_rows} benchmark rows (never a panel input)")
+    for name, err in s.errors.items():
+        print(f"  ERROR      {name}: {err}")
+    if s.synthetic:
+        print("  *** SIMULATED PANEL -- output is not evidence about this stock ***")
+    return 0 if s.sources_used else 1
 
 
 def cmd_quality(args) -> int:
@@ -119,7 +146,18 @@ def cmd_demo(args) -> int:
                       allow_synthetic=args.allow_synthetic, synthetic_seed=args.seed)
     print(f"      sources used: {', '.join(s.sources_used)}; "
           f"{s.targets['inserted']} rows inserted")
-    mode = pit.ASSUME_VENDOR_HISTORY if s.synthetic else args.pit_mode
+
+    mode = args.pit_mode
+    if mode == pit.STRICT and _is_single_snapshot(con, ticker):
+        print()
+        print("      NOTE: this store holds a single snapshot of each source's")
+        print("      back-history, so every row's retrieved_at is today and a")
+        print("      strict point-in-time read returns nothing. Falling back to")
+        print("      pit_mode=assume_vendor_history, which ASSERTS the vendor's")
+        print("      back-history equals what was published at the time. That")
+        print("      assumption is usually false in some degree. Snapshot daily")
+        print("      and strict mode becomes available going forward.")
+        mode = pit.ASSUME_VENDOR_HISTORY
 
     print("\n[2/4] data quality")
     q = run_quality_checks(con, ticker, asof, pit_mode=mode)
@@ -138,6 +176,15 @@ def cmd_demo(args) -> int:
     return 0
 
 
+def _is_single_snapshot(con, ticker: str) -> bool:
+    """True when every row for this ticker was pulled in one go."""
+    n = con.execute(
+        "SELECT COUNT(DISTINCT CAST(retrieved_at AS DATE)) FROM price_target_raw"
+        " WHERE ticker = ?", [ticker.upper()],
+    ).fetchone()[0]
+    return (n or 0) <= 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="equity-forecaster",
@@ -150,7 +197,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_sources)
 
     sp = sub.add_parser("ingest", help="pull prices and analyst panel into the store")
-    sp.add_argument("tickers", nargs="+")
+    sp.add_argument("tickers", nargs="*")
+    sp.add_argument("--universe", action="store_true",
+                    help="ingest every sector-mapped ticker in config.py")
     sp.add_argument("--start")
     sp.add_argument("--end")
     sp.add_argument("--sources", nargs="*")

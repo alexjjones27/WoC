@@ -38,6 +38,7 @@ from datetime import datetime, time, timezone
 
 import pandas as pd
 
+from ..ingest.base import canonical_firm
 from ..ingest.prices import PriceHistory, Split
 
 STRICT = "strict"
@@ -117,6 +118,10 @@ def price_targets_asof(
         # sometimes a Timestamp and sometimes a date is a standing invitation
         # for a comparison to silently do the wrong thing downstream.
         df["action_date"] = pd.to_datetime(df["action_date"]).dt.date
+        # Derived at read time, never stored: see base.canonical_firm. The store
+        # keeps what each vendor published; this is our opinion about which
+        # spellings are the same firm, and opinions belong in the read path.
+        df["analyst_firm_canonical"] = df["analyst_firm"].map(canonical_firm)
         n_syn = int(df["is_synthetic"].sum())
         if 0 < n_syn < len(df) and include_synthetic is None:
             raise ValueError(
@@ -218,3 +223,19 @@ def distinct_tickers(con) -> list[str]:
     return [r[0] for r in con.execute(
         "SELECT DISTINCT ticker FROM price_target_raw ORDER BY 1"
     ).fetchall()]
+
+
+def tickers_with_panel(con, asof, *, pit_mode: str = STRICT) -> list[str]:
+    """Tickers holding at least one visible forecast event at ``asof``."""
+    asof_date = asof.date() if isinstance(asof, datetime) else asof
+    where = ["action_date <= ?"]
+    params: list = [asof_date]
+    if pit_mode == STRICT:
+        where.append("retrieved_at <= ?")
+        params.append(_asof_ts(asof))
+    return [
+        r[0] for r in con.execute(
+            f"SELECT DISTINCT ticker FROM price_target_raw"
+            f" WHERE {' AND '.join(where)} ORDER BY 1", params
+        ).fetchall()
+    ]

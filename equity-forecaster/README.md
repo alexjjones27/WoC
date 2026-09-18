@@ -13,55 +13,95 @@ gets built until the de-biased distribution has been reviewed. See
 
 ---
 
-## The one thing to read first
+## It runs on real data, with no credential
 
-**No vendor credential was available in the environment this was built in.** The
-per-analyst clients (Benzinga, FMP) are written and wired in, but without an API
-key there is no real analyst panel to run on. So the pipeline ships with a
-**simulated panel generator** (`src/ingest/synthetic.py`) that runs on the
-ticker's *real* prices and injects the statistical pathologies the design is
-built around.
+Two keyless per-analyst sources are wired in and verified against live
+responses, so nothing here depends on buying a feed:
 
-That simulated panel exists to exercise and test the code. It is not data.
-Nothing it produces is evidence about any real stock. Three guardrails enforce
-this rather than relying on a reader noticing a caveat:
+- **`finviz`** carries the depth: firm, action date, rating and prior rating,
+  price target and prior target, reaching back about two years.
+- **`stockanalysis`** carries the breadth: the eight most recent actions per
+  ticker, but naming the *individual analyst* and timestamping them intraday.
 
-- every simulated row is stamped `source="synthetic:v1"` in the store, and every
-  report prints a banner;
-- every simulated firm is named `SYNTH-…`, so it cannot be mistaken for a real
-  one in any output;
-- the point-in-time reader **raises** rather than blending simulated and real
-  rows in one analysis.
+A full-universe pull (`ingest --universe`) currently lands **1,484 real
+per-analyst records across 68 tickers, 112 firm strings (89 firms after
+canonicalisation) and 330 named analysts**, plus 952 consensus benchmark rows
+from Nasdaq and 212,440 daily closes from Yahoo.
 
-With a real key set, the same commands run the same pipeline on real records and
-the synthetic path never activates: `ingest` only falls back to it when no real
-source is usable *and* `--allow-synthetic` was passed explicitly.
+A **simulated panel generator** (`src/ingest/synthetic.py`) still ships, for
+testing and for exercising code paths the real data does not currently reach. It
+never activates on its own: `ingest` falls back to it only when no real source is
+usable *and* `--allow-synthetic` was passed explicitly. Three guardrails keep
+simulated rows from being mistaken for data: every one is stamped
+`source="synthetic:v1"` and triggers a banner, every simulated firm is named
+`SYNTH-...`, and the point-in-time reader **raises** rather than blending
+simulated and real rows in one analysis.
 
----
+## What the real data actually shows
+
+Measured, not assumed. All of it under `pit_mode="assume_vendor_history"`, which
+is the caveat that matters most (see below).
+
+**Analysts revise after the stock moves.** Regressing the log change in a firm's
+target on the stock's trailing 20-day return gives **+0.887 (t = +4.48)**, SEs
+clustered by firm, on 33 AAPL revisions. Close to one-for-one. That is the
+brief's second design constraint, confirmed on real records rather than cited.
+
+**Firm identity explains about 30% of the spread in implied returns.** On 1,255
+records across 81 firms, firm dummies explain an adjusted **0.297** of the
+variance in log implied return. Controlling for ticker barely moves it (0.296 to
+0.297), which rules out the obvious confound: this is firms behaving
+differently, not firms covering different stocks.
+
+**The street sits about +14.6% above spot on average**, and firms differ
+persistently around that: DZ Bank at +3.2% raw, UBS at +17.5%. But the
+between-firm variance of *true* offsets is small relative to estimation noise
+(tau-squared = 0.00075), so James-Stein shrinkage pulls most firms two-thirds of
+the way back to the panel mean. Firms are less distinguishable than their raw
+means suggest, which is exactly why the shrinkage intensity is reported.
+
+**Targets are sticky, not fixed multiples.** The within-firm slope of log(PT) on
+log(spot) is **0.75**, below one-for-one: targets under-adjust and trail the
+price. That has a consequence worth internalising. After a run-up the implied
+return compresses or goes negative for the whole panel at once, which is an
+artifact of the lag and not a bearish view. AAPL as of 2026-09-18 shows exactly
+that, with a raw median implied return of **-2.8%** against a spot of $335.50.
+
+**The age decay refuses to fit, correctly.** Two years of history cannot support
+measuring how 12-month forecast accuracy degrades with age: the fit needs 200
+(age, error) pairs over at least 12 evaluation dates and finds 28 over 0. It says
+so and falls back to flat weights inside the 180-day cutoff rather than inventing
+a half-life. The same shortage blocks the level-versus-derivative test, which
+needs 24 month-ends with completed horizons and has 5.
+
+**So depth, not access, is what is now binding.**
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
 
-python -m src.cli sources                              # what data is reachable
-python -m src.cli demo AAPL --allow-synthetic          # ingest → quality → anchoring → de-bias
+python -m src.cli sources                     # what data is reachable right now
+python -m src.cli ingest --universe           # ~68 tickers of REAL analyst data (~12 min)
+python -m src.cli debias AAPL --pit-mode assume_vendor_history
 ```
 
-`demo` runs the whole sequence on one ticker. The individual stages:
+The individual stages:
 
 ```bash
-python -m src.cli ingest AAPL --allow-synthetic --start 2016-01-01
+python -m src.cli ingest AAPL MSFT NVDA --start 2016-01-01
 python -m src.cli quality   AAPL --pit-mode assume_vendor_history
 python -m src.cli anchoring AAPL --pit-mode assume_vendor_history
 python -m src.cli debias    AAPL --pit-mode assume_vendor_history --csv panel.csv
+python -m src.cli demo      AAPL              # all four, one ticker
 ```
 
-To run on real data, set any of `BENZINGA_API_KEY`, `FMP_API_KEY`,
-`FINNHUB_API_KEY` and drop `--allow-synthetic`.
+Setting `BENZINGA_API_KEY` or `FMP_API_KEY` adds those sources; nothing requires
+them. `--allow-synthetic` falls back to the simulated panel when no real source
+works.
 
 ```bash
-python -m pytest tests/ -q      # 53 tests, no network access required
+python -m pytest tests/ -q      # 73 tests, no network access required
 ```
 
 ---
@@ -85,22 +125,51 @@ known to be uninformative, and this codebase is shaped around not building it.
 
 ### Sources
 
-| Source | Role | Credential | Response parsing verified? |
+| Source | Role | Credential | Verified? |
 |---|---|---|---|
-| **Yahoo** `/v8/finance/chart` | daily split-adjusted closes, split events | none | **yes**, exercised against live responses |
-| **Benzinga** Analyst Ratings v2.1 | per-analyst panel (has prior rating *and* prior target) | `BENZINGA_API_KEY` | **no**, written to the published schema, untested without a key |
+| **Yahoo** `/v8/finance/chart` | daily split-adjusted closes, split events | none | **yes**, against live responses |
+| **Finviz** `/quote.ashx` | per-analyst panel, ~2 years deep, firm level | none | **yes**, 12 tickers live |
+| **stockanalysis.com** `/ratings/__data.json` | per-analyst panel, 8 most recent, names the analyst | none | **yes**, 12 tickers live |
+| **Nasdaq** `/api/analyst/<s>/targetprice` | **consensus benchmark only**, ~13 dated monthly points | none | **yes**, against live responses |
+| **Benzinga** Analyst Ratings v2.1 | per-analyst panel | `BENZINGA_API_KEY` | **no**, written to the published schema |
 | **FMP** `price-target`, `upgrades-downgrades` | per-analyst panel | `FMP_API_KEY` | **no**, same |
-| **Finnhub** `price-target` | **consensus benchmark only** | `FINNHUB_API_KEY` | endpoint confirmed (401 without a key); parsing untested |
+| **Finnhub** `price-target` | **consensus benchmark only** | `FINNHUB_API_KEY` | endpoint confirmed (401); parsing untested |
 | **SEC EDGAR** | 13F (Stage 6) | none | not built |
+
+**Terms of use.** Finviz's robots.txt permits `/quote.ashx` and `/stock`;
+stockanalysis.com's disallows only `/e/` and `/p/`. Neither is the same as a
+site's terms of service, and Finviz sells a tier that includes data export. Both
+clients sleep a second between tickers and the pipeline needs at most one request
+per ticker per day. Read both sites' terms before running this on a schedule. If
+you have a university affiliation, **WRDS/IBES is the genuinely clean option**
+and is usually free to students and faculty: properly point-in-time, with real
+delisted coverage, which would also fix limitation 3 below.
 
 Two notes worth flagging rather than burying:
 
-- **Finnhub cannot supply a panel.** Both endpoints the brief lists
-  (`price-target`, `recommendation-trends`) return *pre-aggregated* consensus:
-  high/low/mean/median, or counts of buy/hold/sell. Neither exposes a single
-  analyst's action. So `ingest/finnhub.py` deliberately **refuses** to emit
-  `PriceTargetRecord` rows and returns a `ConsensusSnapshot` instead: stored as
-  the benchmark Stage 8's consensus test has to beat, never as an input.
+- **Finnhub and Nasdaq cannot supply a panel.** Both return only *pre-aggregated*
+  consensus: high/low/mean/median, or counts of buy/hold/sell. Neither exposes a
+  single analyst's action. So both clients deliberately **refuse** to emit
+  `PriceTargetRecord` rows and return `ConsensusSnapshot`s instead, stored as the
+  benchmark Stage 8's consensus test has to beat, never as an input. A test
+  asserts the refusal.
+- **stockanalysis.com ships its own analyst skill scores, and they are poison.**
+  Each record carries that analyst's success rate, average return and rank,
+  computed over their *entire* history including everything after the record's
+  date. Using them to weight a 2025 forecast would be scoring it with knowledge
+  of how it turned out. They are stored under the deliberately awkward key
+  `lookahead_contaminated_scores` so they cannot be reached for by accident, and
+  are good for exactly one thing: cross-checking the point-in-time skill
+  estimates Stage 3 will compute for itself.
+- **Firm names are canonicalised at read time, never in the store.** Vendors
+  spell one firm several ways (`J.P. Morgan` / `JP Morgan`, `BofA Securities` /
+  `Bank of America Securities`, `BNP Paribas Exane` / `Exane BNP Paribas`), and
+  the fragmentation is not cosmetic: each spelling gets its own noisy offset,
+  each shrunk harder than the combined firm would be, and Stage 3 would count one
+  firm as two independent opinions. `base.canonical_firm` collapses the 112
+  observed strings to 89 firms. It is derived in the read path because the store
+  holds what vendors published, and a canonical name is an opinion about that
+  which should stay revisable without rewriting history.
 - The two unverified clients keep their parsing in standalone functions
   (`parse_ratings`, `parse_price_targets`, `parse_grades`) precisely so they can
   be tested against a captured payload the moment a key exists.
@@ -239,14 +308,19 @@ information**, and every report says so.
 
 Real ones, not ritual hedging:
 
-1. **No real analyst panel was available.** Everything demonstrated so far runs on
-   simulated records. The pipeline is tested; the *findings* are nil by
-   construction.
-2. **Single-ticker firm offsets are not separable from firm views.** With one
-   ticker, a firm's anchoring bias cannot be told apart from its genuine opinion
-   on that stock, so the correction removes some signal along with the bias. The
-   warning fires below about five tickers. Real use needs the firm's whole
-   coverage universe.
+1. **Two years of history is the binding constraint now, not access.** The free
+   sources are a *current snapshot* of back-history, readable only under
+   `pit_mode="assume_vendor_history"`. Two years cannot support the age-decay
+   fit, the level-versus-derivative test, Stage 3's skill weights or Stage 8's
+   walk-forward. The fix costs nothing but time: the store is append-only with
+   `retrieved_at` on every row, so a daily snapshot turns a non-point-in-time
+   source into a genuinely point-in-time dataset going forward, and in about
+   twelve months `pit_mode="strict"` becomes readable.
+2. **Firm offsets are now fitted across the coverage universe**, which fixes the
+   earlier single-ticker problem: on one ticker a firm's anchoring bias cannot be
+   told apart from its view on that stock. `run_debias` fits on all 68 tickers by
+   default (`cross_ticker_offsets=True`), and the separability warning fires below
+   about five.
 3. **Yahoo cannot meet the survivorship requirement.** It back-adjusts silently,
    revises, and has no usable delisted-security coverage. The brief's
    "retain delisted and acquired tickers" rule cannot be satisfied with it. That
@@ -274,11 +348,15 @@ src/
   pipeline.py            ingest → store → PIT read → Stage 2
   report.py              the terminal report
   ingest/
-    base.py              PriceTargetRecord, natural_key/payload_hash, rating map
+    base.py              PriceTargetRecord, natural_key/payload_hash, rating map,
+                         canonical_firm
     http.py              retrying stdlib fetcher
     prices.py            Yahoo daily closes, splits, PIT price accessors
+    finviz.py            per-analyst panel, keyless, ~2 years deep
+    stockanalysis.py     per-analyst panel, keyless, names the analyst
+    nasdaq.py            consensus benchmark; refuses to emit panel rows
     benzinga.py fmp.py   per-analyst clients (unverified without a key)
-    finnhub.py           consensus benchmark only; refuses to emit panel rows
+    finnhub.py           consensus benchmark; refuses to emit panel rows
     synthetic.py         SIMULATED panel + injected ground truth
   store/
     schema.py            append-only DuckDB schema
@@ -294,7 +372,7 @@ src/
 notebooks/
   01_data_quality.ipynb        thin wrappers over the tested modules, so the
   02_anchoring_evidence.ipynb  analysis cannot diverge from what runs
-tests/                   53 tests, offline
+tests/                   73 tests, offline
 ```
 
 The notebooks hold no logic. Every check and regression lives in a module under
@@ -313,3 +391,10 @@ rather than quietly guessing, and that a restated value never reaches the model.
 `tests/test_debias.py` checks the firm-offset estimator against the generator's
 injected ground truth (correlation > 0.9, mean absolute error < 5pp) rather than
 merely checking that it produces a plausible-looking number.
+
+`tests/test_ingest_clients.py` parses trimmed copies of real captured responses,
+so a silent upstream schema change shows up as a failing test rather than as an
+empty panel. It also pins the things that were checked rather than assumed: that
+Finviz timestamps read as UTC, that Nasdaq's current high/low band is not
+back-filled onto its 2025 observations, and that both consensus clients refuse to
+emit panel rows at all.

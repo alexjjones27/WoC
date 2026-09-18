@@ -26,6 +26,7 @@ the value as originally published, never the restated one.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
@@ -44,13 +45,17 @@ _RATING_MAP = {
     # buy
     "buy": 4, "outperform": 4, "overweight": 4, "accumulate": 4, "add": 4,
     "positive": 4, "market outperform": 4, "sector outperform": 4,
+    "mkt outperform": 4, "sector overweight": 4,
     # hold
     "hold": 3, "neutral": 3, "market perform": 3, "equal-weight": 3,
-    "equal weight": 3, "in-line": 3, "in line": 3, "sector perform": 3,
-    "peer perform": 3, "perform": 3,
+    "equal weight": 3, "equalweight": 3, "in-line": 3, "in line": 3,
+    "sector perform": 3, "peer perform": 3, "perform": 3,
+    # abbreviations and sector-relative wordings seen live on Finviz
+    "mkt perform": 3, "market weight": 3, "sector weight": 3,
     # sell
     "sell": 2, "underperform": 2, "underweight": 2, "reduce": 2,
     "negative": 2, "market underperform": 2, "sector underperform": 2,
+    "mkt underperform": 2, "sector underweight": 2,
     # strong sell
     "strong sell": 1, "conviction sell": 1, "strong-sell": 1,
 }
@@ -65,6 +70,111 @@ def normalise_rating(raw: str | None) -> int | None:
         return None
     key = " ".join(str(raw).strip().lower().replace("_", " ").split())
     return _RATING_MAP.get(key)
+
+
+# ---------------------------------------------------------------------------
+# Firm-name canonicalisation
+#
+# Vendors spell the same firm several ways, and the fragmentation is not
+# cosmetic: "J.P. Morgan" and "JP Morgan" each get their own noisy anchoring
+# offset, each is shrunk harder than the combined firm would be, and the
+# correlation penalty in Stage 3 would count one firm as two independent
+# opinions. Observed live across finviz and stockanalysis: JP Morgan / J.P.
+# Morgan, BofA Securities / Bank of America Securities, Citi / Citigroup,
+# Goldman / Goldman Sachs, RBC Capital / RBC Capital Mkts, BNP Paribas Exane /
+# Exane BNP Paribas.
+#
+# This is deliberately a READ-TIME derivation, not a stored column. The store is
+# append-only and holds what each vendor actually published; a canonical name is
+# an opinion about that data, and opinions belong in the read path where they can
+# be revised without rewriting history or re-ingesting.
+# ---------------------------------------------------------------------------
+
+#: Corporate boilerplate that carries no identity.
+_FIRM_NOISE = {
+    "securities", "capital", "markets", "mkts", "mkt", "research", "group",
+    "partners", "co", "inc", "llc", "ltd", "plc", "corp", "corporation",
+    "company", "and", "financial", "investment", "investments",
+    "banking", "international", "usa", "us", "ag", "sa", "nv", "the",
+}
+#: "bank" is deliberately NOT noise: stripping it turns "Bank of America" into
+#: "of america" and breaks the BofA alias, and it is load-bearing in DZ Bank,
+#: Deutsche Bank and Berenberg Bank.
+
+#: Abbreviations the mechanical rule cannot reach. Conservative on purpose:
+#: only unambiguous, well-known equivalences. Two-letter tickers-as-firms
+#: ("MS", "GS", "DB") are deliberately absent -- too easy to over-merge.
+_FIRM_ALIASES = {
+    "bofa": "bank of america",
+    "boa": "bank of america",
+    "citi": "citigroup",
+    "goldman": "goldman sachs",
+    "kbw": "bruyette keefe woods",
+    "stifel nicolaus": "stifel",
+    "jpm": "jp morgan",
+    "jpmorgan": "jp morgan",
+    "monness crespi hardt": "monness",
+    "bruyette keefe": "bruyette keefe woods",
+    "berenberg bank": "berenberg",
+}
+
+
+def _collapse_initials(text: str) -> str:
+    """Join runs of single-letter tokens: "j p morgan" -> "jp morgan".
+
+    Stripping punctuation turns "J.P. Morgan" into three tokens, which then
+    sorts differently from "JP Morgan" and splits one firm into two.
+    """
+    out: list[str] = []
+    run: list[str] = []
+    for token in text.split():
+        if len(token) == 1 and token.isalpha():
+            run.append(token)
+            continue
+        if run:
+            out.append("".join(run))
+            run = []
+        out.append(token)
+    if run:
+        out.append("".join(run))
+    return " ".join(out)
+
+
+def canonical_firm(name: str | None) -> str:
+    """Collapse vendor spellings of one firm onto a single key.
+
+    Three passes, in order:
+
+    1. strip a leading vendor artifact prefix (``DEL_`` appears in the wild),
+       lowercase, and drop punctuation;
+    2. remove corporate boilerplate, apply the alias table, and SORT the
+       remaining tokens, which is what catches word-order variants such as
+       "BNP Paribas Exane" and "Exane BNP Paribas";
+    3. fall back to the cleaned name if nothing survives, so a firm called
+       "Capital Partners" does not canonicalise to the empty string and merge
+       with every other fully-stripped name.
+    """
+    if not name:
+        return ""
+    text = str(name).strip()
+    if text.upper().startswith("DEL_"):
+        text = text[4:]
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9 ]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    text = _collapse_initials(text)
+    text = _FIRM_ALIASES.get(text, text)
+    tokens = [t for t in text.split() if t not in _FIRM_NOISE]
+    if not tokens:
+        # Everything was boilerplate; keep the cleaned name rather than merge
+        # unrelated firms onto an empty key.
+        return text
+    joined = " ".join(tokens)
+    joined = _FIRM_ALIASES.get(joined, joined)
+    return " ".join(sorted(joined.split()))
 
 
 def _as_date(value) -> date:

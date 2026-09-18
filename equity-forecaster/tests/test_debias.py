@@ -168,8 +168,33 @@ def test_firm_correction_removes_the_firm_variance_component():
                             estimate_firm_offsets(attach_implied_returns(panel, h)))
     before = firm_variance_share(df, "log_implied")
     after = firm_variance_share(df, "log_after_firm")
-    assert before > 0.10, "generator did not produce a firm effect to remove"
-    assert after < before / 5
+    assert before.reliable, "panel too thin for the measure to mean anything"
+    assert before.adjusted > 0.10, "generator did not produce a firm effect to remove"
+    assert after.adjusted < before.adjusted / 5
+
+
+def test_firm_variance_share_refuses_a_one_record_per_firm_panel():
+    """With one record per firm, firm dummies fit perfectly whatever the truth
+    is. The raw share is near 1.0 by construction and must be marked unreliable
+    rather than read as evidence of a strong firm effect."""
+    df = pd.DataFrame([
+        {"analyst_firm": f"F{i}", "log_implied": 0.1 * i, "usable": True}
+        for i in range(12)
+    ])
+    v = firm_variance_share(df, "log_implied")
+    assert v.share > 0.99 and not v.reliable
+    assert np.isnan(v.adjusted) or v.adjusted < v.share
+
+
+def test_firm_variance_share_is_reliable_with_enough_records_per_firm():
+    rng = np.random.default_rng(3)
+    rows = []
+    for f in range(6):
+        for _ in range(20):
+            rows.append({"analyst_firm": f"F{f}", "usable": True,
+                         "log_implied": 0.1 * f + rng.normal(0, 0.02)})
+    v = firm_variance_share(pd.DataFrame(rows), "log_implied")
+    assert v.reliable and v.adjusted > 0.8
 
 
 def test_thin_panel_is_shrunk_hard_toward_the_mean():

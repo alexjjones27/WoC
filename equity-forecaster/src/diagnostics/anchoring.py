@@ -237,11 +237,23 @@ def render_anchoring_report(s: AnchoringStudy, top: int = 20) -> str:
                 out.append(f"  (Statistically the slope does differ from 1, t={s.anchor_slope_t:+.2f},")
                 out.append("   but on this sample size that is a precision result, not an")
                 out.append("   economic one.)")
+        elif s.anchor_slope < 1.0:
+            out.append(f"  {s.anchor_slope:.2f}, below one-for-one (t={s.anchor_slope_t:+.2f}): targets are STICKY.")
+            out.append("  A 1% move in the stock moves the target by less than 1%, so")
+            out.append("  the street under-adjusts and its targets trail the price.")
+            out.append("  This is still anchoring, but to a STALE price rather than to")
+            out.append("  the current one, and it has a different consequence: after a")
+            out.append("  run-up the implied return compresses or goes negative for")
+            out.append("  everyone at once, which is a panel-wide artifact and not a")
+            out.append("  bearish view. Step (a) removes the firm's habitual level; it")
+            out.append("  does not fix the lag, and Stage 2b's age decay is the part")
+            out.append("  that is supposed to.")
         else:
-            out.append(f"  {gap:.2f} away from one-for-one (t={s.anchor_slope_t:+.2f}): targets are NOT")
-            out.append("  a fixed multiple of spot in this panel, so the anchoring")
-            out.append("  correction is doing less than the brief assumes and the")
-            out.append("  assumption should be re-examined before relying on Stage 2a.")
+            out.append(f"  {s.anchor_slope:.2f}, above one-for-one (t={s.anchor_slope_t:+.2f}): targets")
+            out.append("  OVER-extrapolate. A 1% move moves the target by more than 1%,")
+            out.append("  so the street amplifies recent moves rather than merely")
+            out.append("  restating them. Check section B: a high follower loading")
+            out.append("  alongside this means targets are chasing momentum.")
     else:
         out.append("  not estimated (too few records)")
 

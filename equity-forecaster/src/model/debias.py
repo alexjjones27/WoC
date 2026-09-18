@@ -236,6 +236,18 @@ def attach_implied_returns(
 # ---------------------------------------------------------------------------
 
 
+#: Column the firm-level corrections group on. The canonical name is derived at
+#: read time by the point-in-time layer; the raw column is the fallback for
+#: frames built by hand (tests) that never went through it.
+FIRM_COL = "analyst_firm_canonical"
+FIRM_COL_FALLBACK = "analyst_firm"
+
+
+def firm_column(df: pd.DataFrame) -> str:
+    """Which column identifies the firm in this frame."""
+    return FIRM_COL if FIRM_COL in df.columns else FIRM_COL_FALLBACK
+
+
 @dataclass
 class FirmOffsets:
     table: pd.DataFrame
@@ -245,6 +257,7 @@ class FirmOffsets:
     n_firms: int
     n_tickers: int
     cutoff: date | None
+    firm_col: str = FIRM_COL_FALLBACK
     warnings: list[str] = field(default_factory=list)
 
 
@@ -305,11 +318,12 @@ def estimate_firm_offsets(
                          "shrinkage", "mu_log", "mu_return"]
             ),
             mu_global=float("nan"), tau2=float("nan"), mean_shrinkage=float("nan"),
-            n_firms=0, n_tickers=0, cutoff=cutoff,
+            n_firms=0, n_tickers=0, cutoff=cutoff, firm_col=firm_column(df),
             warnings=warnings + ["no usable records"],
         )
 
-    g = df.groupby("analyst_firm")["log_implied"]
+    fcol = firm_column(df)
+    g = df.groupby(fcol)["log_implied"]
     stats = pd.DataFrame({"n_obs": g.size(), "raw_mean_log": g.mean(), "sd_log": g.std(ddof=1)})
     # Firms with a single observation carry no dispersion of their own; give
     # them the pooled within-firm dispersion so their shrinkage is well defined.
@@ -341,7 +355,7 @@ def estimate_firm_offsets(
     stats["sum_log"] = g.sum()
     stats["thin"] = stats["n_obs"] < min_obs
 
-    table = stats.reset_index()
+    table = stats.reset_index().rename(columns={fcol: "analyst_firm"})
     return FirmOffsets(
         table=table,
         mu_global=mu_global,
@@ -350,6 +364,7 @@ def estimate_firm_offsets(
         n_firms=int(len(table)),
         n_tickers=n_tickers,
         cutoff=cutoff,
+        firm_col=fcol,
         warnings=warnings,
     )
 
@@ -362,8 +377,9 @@ def apply_firm_offsets(
     tab = offsets.table.set_index("analyst_firm") if len(offsets.table) else None
     mu_log, shrink_col = np.full(len(df), np.nan), np.full(len(df), np.nan)
 
+    fcol = offsets.firm_col if offsets.firm_col in df.columns else firm_column(df)
     for i, (_, row) in enumerate(df.iterrows()):
-        firm = row["analyst_firm"]
+        firm = row[fcol]
         if tab is None or firm not in tab.index:
             mu_log[i] = offsets.mu_global
             shrink_col[i] = 1.0
@@ -701,25 +717,76 @@ class DebiasResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def firm_variance_share(panel: pd.DataFrame, column: str = "log_implied") -> float:
-    """Share of cross-sectional variance in ``column`` explained by firm identity.
+@dataclass
+class FirmVarianceShare:
+    """How much of the spread in implied returns is just firm identity.
+
+    ``share`` is the raw one-way-ANOVA R^2 of firm dummies. On its own it is a
+    trap: with one record per firm it is mechanically 1.0 no matter what the
+    data says, and a single-ticker panel of fourteen records from thirteen firms
+    is exactly that case. ``adjusted`` applies the usual degrees-of-freedom
+    correction
+
+        1 - (1 - R^2) * (n - 1) / (n - k)
+
+    which goes negative precisely when the fit is indistinguishable from noise,
+    and ``reliable`` is False whenever there are too few records per firm for
+    either number to mean anything.
+    """
+
+    share: float
+    adjusted: float
+    n_obs: int
+    n_firms: int
+    reliable: bool
+
+    @property
+    def obs_per_firm(self) -> float:
+        return self.n_obs / self.n_firms if self.n_firms else float("nan")
+
+
+def firm_variance_share(
+    panel: pd.DataFrame,
+    column: str = "log_implied",
+    *,
+    min_obs_per_firm: float = 2.0,
+    control_for_ticker: bool = True,
+) -> FirmVarianceShare:
+    """Share of variance in ``column`` explained by firm identity.
 
     This is the mechanical evidence for whether step (a) is doing anything. A
     high share means implied returns say more about who wrote them than about
-    the stock; that is the anchoring effect the correction targets.
+    the stock; that is the anchoring effect the correction targets. Read
+    ``adjusted``, and only when ``reliable``.
+
+    ``control_for_ticker`` removes each ticker's mean first, and on a
+    cross-ticker panel it is the difference between a meaningful number and a
+    misleading one. Firms cover different stocks, and stocks genuinely differ in
+    how far the street sits above spot, so without the control a firm dummy
+    quietly absorbs that firm's COVERAGE MIX and reports it as anchoring. What
+    survives the control is the part that is about the firm: how far above spot
+    it sits on the same stock, relative to everyone else covering it.
     """
-    df = panel[panel.get("usable", True)][["analyst_firm", column]].dropna()
-    if df[column].empty or df["analyst_firm"].nunique() < 2:
-        return float("nan")
-    total = float(df[column].var(ddof=0))
+    fcol = firm_column(panel)
+    cols = [fcol, column] + (["ticker"] if control_for_ticker and "ticker" in panel else [])
+    df = panel[panel.get("usable", True)][cols].dropna()
+    n, k = len(df), df[fcol].nunique() if len(df) else 0
+    nan = float("nan")
+    if n == 0 or k < 2:
+        return FirmVarianceShare(nan, nan, n, k, False)
+
+    values = df[column]
+    if control_for_ticker and "ticker" in df and df["ticker"].nunique() > 1:
+        values = values - df.groupby("ticker")[column].transform("mean")
+
+    total = float(values.var(ddof=0))
     if total <= 0:
-        return float("nan")
-    within = float(
-        df.groupby("analyst_firm")[column]
-        .transform(lambda s: s - s.mean())
-        .var(ddof=0)
-    )
-    return max(0.0, min(1.0, 1.0 - within / total))
+        return FirmVarianceShare(nan, nan, n, k, False)
+    within = float(values.groupby(df[fcol]).transform(lambda s: s - s.mean()).var(ddof=0))
+    share = max(0.0, min(1.0, 1.0 - within / total))
+    adjusted = 1.0 - (1.0 - share) * (n - 1) / (n - k) if n > k else nan
+    reliable = (n - k) >= k and (n / k) >= min_obs_per_firm
+    return FirmVarianceShare(share, adjusted, n, k, reliable)
 
 
 def debias(
@@ -735,8 +802,16 @@ def debias(
     max_level_age: int = config.MAX_LEVEL_AGE_DAYS,
     horizon_days: int = config.FORECAST_HORIZON_DAYS,
     fit_decay: bool = True,
+    coverage_panel: pd.DataFrame | None = None,
 ) -> DebiasResult:
-    """Run the full Stage 2 pipeline for one ticker as of one date."""
+    """Run the full Stage 2 pipeline for one ticker as of one date.
+
+    ``coverage_panel``, when supplied, is the implied-return frame for the WHOLE
+    covered universe and is used to fit the firm anchoring offsets. That is what
+    the brief means by estimating a firm's offset "across all coverage", and it
+    is the difference between measuring a firm's habitual multiple of spot and
+    measuring its opinion about one stock.
+    """
     warnings: list[str] = list(panel.attrs.get("warnings", []))
     pit_mode = panel.attrs.get("pit_mode", "unknown")
     is_synth = bool(panel.attrs.get("is_synthetic", False))
@@ -748,8 +823,14 @@ def debias(
 
     df = attach_implied_returns(panel, history, convention=convention)
 
-    offsets = estimate_firm_offsets(df, cutoff=None, leave_one_out=True)
+    # Firm offsets come from the whole coverage universe when it is available,
+    # and from this ticker alone otherwise (with the separability warning).
+    offset_source = df if coverage_panel is None or coverage_panel.empty else coverage_panel
+    offsets = estimate_firm_offsets(offset_source, cutoff=None, leave_one_out=True)
     warnings.extend(offsets.warnings)
+    # Leave-one-out only makes sense when the record is IN the frame the offsets
+    # were fitted on. It is, when the coverage panel was used (this ticker is
+    # part of the universe) and when the ticker's own panel was used.
     df = apply_firm_offsets(df, offsets, leave_one_out=True)
 
     if sector is not None:
@@ -808,17 +889,29 @@ def debias(
         "n_events_total": int(len(df)),
         "n_usable": int(df["usable"].sum()),
         "n_in_level_window": int(in_window.sum()),
-        "n_firms_in_window": int(df.loc[in_window, "analyst_firm"].nunique()),
+        "n_firms_in_window": int(df.loc[in_window, firm_column(df)].nunique()),
+        "n_firm_strings_in_window": int(df.loc[in_window, "analyst_firm"].nunique()),
         "median_age_days": float(df.loc[in_window, "age_days"].median()) if in_window.any() else float("nan"),
         "max_level_age_days": max_level_age,
-        "firm_variance_share_raw": firm_variance_share(df, "log_implied"),
-        "firm_variance_share_after": firm_variance_share(df, "log_after_firm"),
+        # Measured on the whole coverage universe where one is available: with
+        # one record per firm the per-ticker version is uninformative by
+        # construction (see FirmVarianceShare).
+        "firm_variance_share_raw": firm_variance_share(offset_source, "log_implied"),
+        "firm_variance_share_after": firm_variance_share(
+            apply_firm_offsets(offset_source, offsets, leave_one_out=True),
+            "log_after_firm",
+        ),
+        "firm_variance_scope": (
+            "ticker" if coverage_panel is None or coverage_panel.empty else "coverage universe"
+        ),
         "flag_counts": {
             k: int(df[k].sum())
             for k in df.columns
             if k.startswith("flag_")
         },
         "n_restated_events": int(df["was_restated"].sum()) if "was_restated" in df else 0,
+        "offsets_fitted_on_tickers": offsets.n_tickers,
+        "offsets_fitted_on_records": int(offsets.table["n_obs"].sum()) if len(offsets.table) else 0,
         "spot_convention": convention,
         "sources": panel.attrs.get("sources", []),
     }

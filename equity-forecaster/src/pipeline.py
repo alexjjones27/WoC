@@ -5,24 +5,44 @@ or a test without shelling out.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+
+import pandas as pd
 
 from . import config
 from .ingest import synthetic
 from .ingest.base import VendorClient
 from .ingest.benzinga import BenzingaClient
+from .ingest.finviz import FinvizClient
 from .ingest.fmp import FMPClient
+from .ingest.nasdaq import NasdaqConsensusClient
 from .ingest.prices import fetch_price_history
-from .model.debias import DebiasResult, debias
+from .ingest.stockanalysis import StockAnalysisClient
+from .model.debias import DebiasResult, attach_implied_returns, debias
 from .store import pit, writer
 
-#: Sources that can supply PER-ANALYST records. Finnhub is deliberately absent:
-#: it publishes only aggregated consensus, which the design forbids as an input.
+#: Sources that can supply PER-ANALYST records, best first.
+#:
+#: Finnhub and Nasdaq are deliberately absent: both publish only aggregated
+#: consensus, which the design forbids as an input. They are ingested separately
+#: as benchmarks (see CONSENSUS_CLIENTS).
+#:
+#: finviz and stockanalysis need no credential and complement each other --
+#: finviz reaches back about sixteen months with firm-level records, while
+#: stockanalysis returns only the eight most recent actions but names the
+#: individual analyst. Running both is also what makes the data-quality gate's
+#: cross-vendor disagreement check measurable at all.
 PANEL_CLIENTS: dict[str, type[VendorClient]] = {
     "benzinga": BenzingaClient,
     "fmp": FMPClient,
+    "finviz": FinvizClient,
+    "stockanalysis": StockAnalysisClient,
 }
+
+#: Aggregated sources, stored only so Stage 8's consensus test has something to
+#: beat. Never read as a panel input.
+CONSENSUS_CLIENTS = {"nasdaq": NasdaqConsensusClient}
 
 
 @dataclass
@@ -36,6 +56,8 @@ class IngestSummary:
     synthetic: bool
     history_start: date | None
     history_end: date | None
+    consensus_rows: int = 0
+    errors: dict = field(default_factory=dict)
 
 
 def available_panel_sources() -> dict[str, tuple[bool, str]]:
@@ -81,6 +103,7 @@ def ingest_ticker(
     wanted = sources or list(PANEL_CLIENTS)
     used: list[str] = []
     skipped: dict[str, str] = {}
+    errors: dict[str, str] = {}
     totals = {"offered": 0, "inserted": 0, "duplicate": 0, "restated": 0}
 
     for name in wanted:
@@ -94,7 +117,15 @@ def ingest_ticker(
             skipped[name] = reason
             continue
         run_id = writer.start_run(con, ticker, name)
-        records = client.fetch(ticker, start, end)
+        try:
+            records = client.fetch(ticker, start, end)
+        except Exception as exc:
+            # One source failing must not lose the others' rows, but it must not
+            # be silent either: a quietly-empty panel looks identical to a stock
+            # nobody covers.
+            errors[name] = f"{type(exc).__name__}: {exc}"
+            writer.finish_run(con, run_id, 0, 0, 0, 0)
+            continue
         stats = writer.append_price_targets(con, records, run_id)
         writer.finish_run(con, run_id, stats["offered"], stats["inserted"],
                           stats["duplicate"], stats["restated"])
@@ -124,6 +155,22 @@ def ingest_ticker(
         used.append(synthetic.SOURCE)
         is_synth = True
 
+    # Consensus benchmarks. Stored in their own table, never in the panel.
+    consensus_rows = 0
+    for name, cls in CONSENSUS_CLIENTS.items():
+        client = cls()
+        ok, _ = client.available()
+        if not ok:
+            continue
+        try:
+            current, history_points = client.fetch_consensus(ticker)
+        except Exception as exc:
+            errors[name] = f"{type(exc).__name__}: {exc}"
+            continue
+        for snap in [current, *history_points]:
+            writer.append_consensus(con, snap)
+            consensus_rows += 1
+
     return IngestSummary(
         ticker=ticker,
         price_rows=price_stats["prices_inserted"],
@@ -134,7 +181,51 @@ def ingest_ticker(
         synthetic=is_synth,
         history_start=history.start,
         history_end=history.end,
+        consensus_rows=consensus_rows,
+        errors=errors,
     )
+
+
+def build_coverage_panel(
+    con,
+    asof: date,
+    *,
+    pit_mode: str = pit.STRICT,
+    include_synthetic: bool | None = None,
+    tickers: list[str] | None = None,
+):
+    """Implied returns for EVERY covered ticker, for cross-ticker firm offsets.
+
+    The brief says a firm's anchoring offset should be estimated "across all
+    coverage", and the reason is not thoroughness. On a single ticker a firm's
+    habitual multiple of spot cannot be separated from that firm's genuine view
+    on that one stock, so subtracting it removes signal along with bias. Across
+    dozens of names the firm effect is what survives averaging over stocks, and
+    the stock-specific view is what does not.
+
+    Each ticker's implied returns are computed against ITS OWN point-in-time
+    price history, then concatenated. Returns an empty frame if nothing is
+    visible.
+    """
+    names = tickers or pit.tickers_with_panel(con, asof, pit_mode=pit_mode)
+    frames = []
+    for name in names:
+        try:
+            panel = pit.price_targets_asof(
+                con, name, asof, pit_mode=pit_mode,
+                include_synthetic=include_synthetic,
+            )
+        except ValueError:
+            continue           # mixed real/synthetic for this ticker; skip it
+        if panel.empty:
+            continue
+        history = pit.price_history_asof(con, name, asof)
+        if len(history) == 0:
+            continue
+        frames.append(attach_implied_returns(panel, history))
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
 
 
 def run_debias(
@@ -145,8 +236,15 @@ def run_debias(
     pit_mode: str = pit.STRICT,
     include_synthetic: bool | None = None,
     fit_decay: bool = True,
+    cross_ticker_offsets: bool = True,
 ) -> DebiasResult:
-    """Read the panel point-in-time and run Stage 2 on it."""
+    """Read the panel point-in-time and run Stage 2 on it.
+
+    ``cross_ticker_offsets`` estimates the firm anchoring offsets over the whole
+    covered universe in the store rather than over this ticker alone. On by
+    default because the single-ticker estimate conflates a firm's bias with its
+    view on the stock; turn it off only to reproduce a single-ticker result.
+    """
     ticker = ticker.upper()
     panel = pit.price_targets_asof(
         con, ticker, asof, pit_mode=pit_mode, include_synthetic=include_synthetic
@@ -163,8 +261,16 @@ def run_debias(
     if len(sector) == 0:
         sector = None
 
-    result = debias(
+    coverage = None
+    if cross_ticker_offsets:
+        coverage = build_coverage_panel(
+            con, asof, pit_mode=pit_mode, include_synthetic=include_synthetic
+        )
+        if coverage.empty:
+            coverage = None
+
+    return debias(
         panel, history, sector, ticker=ticker, asof=asof,
         sector_symbol=etf, is_real_sector=is_real, fit_decay=fit_decay,
+        coverage_panel=coverage,
     )
-    return result

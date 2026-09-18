@@ -73,6 +73,8 @@ def panel_composition(result: DebiasResult) -> list[str]:
 def firm_offsets_table(result: DebiasResult, top: int = 25) -> list[str]:
     fo = result.firm_offsets
     out = ["", "STEP (a) FIRM ANCHORING OFFSETS", THIN,
+           f"  fitted on {result.diagnostics['offsets_fitted_on_records']} records "
+           f"across {fo.n_tickers} ticker(s) and {fo.n_firms} firms",
            f"  panel mean log offset  {fo.mu_global:+.4f}  "
            f"({_pct(np.exp(fo.mu_global) - 1)} in return terms)",
            f"  between-firm variance of true offsets (tau^2)  {fo.tau2:.5f}",
@@ -82,15 +84,18 @@ def firm_offsets_table(result: DebiasResult, top: int = 25) -> list[str]:
         out.append("        correction is close to subtracting a single constant.")
     out += ["",
             f"  {'firm':<26}{'n':>5}{'raw mean':>11}{'shrunk mu':>11}{'shrink':>8}"]
-    tab = fo.table.sort_values("n_obs", ascending=False).head(top)
+    in_panel = set(result.panel[result.panel["age_weight"] > 0].get(
+        "analyst_firm_canonical", result.panel["analyst_firm"]))
+    tab = fo.table[fo.table["analyst_firm"].isin(in_panel)] \
+        .sort_values("n_obs", ascending=False).head(top)
     for _, r in tab.iterrows():
         out.append(
             f"  {str(r['analyst_firm'])[:25]:<26}{int(r['n_obs']):>5}"
             f"{_pct(np.exp(r['raw_mean_log']) - 1):>11}"
             f"{_pct(r['mu_return']):>11}{r['shrinkage']:>8.2f}"
         )
-    if len(fo.table) > top:
-        out.append(f"  ... {len(fo.table) - top} more firms")
+    out.append(f"  (showing the {len(tab)} firms with a live target on this ticker; "
+               f"{fo.n_firms} firms were fitted in total)")
     return out
 
 
@@ -207,24 +212,34 @@ def histograms(result: DebiasResult, bins: int = 18, width: int = 28) -> list[st
 
 def variance_section(result: DebiasResult) -> list[str]:
     d = result.diagnostics
-    before = d["firm_variance_share_raw"]
-    after = d["firm_variance_share_after"]
+    before, after = d["firm_variance_share_raw"], d["firm_variance_share_after"]
+    scope = d["firm_variance_scope"]
     out = ["", "WHAT THE FIRM CORRECTION ACTUALLY REMOVED", THIN,
-           "  share of cross-sectional variance in log implied return",
-           "  explained by firm identity:",
-           f"      before correction   {before:.3f}" if np.isfinite(before) else
-           "      before correction   n/a",
-           f"      after correction    {after:.3f}" if np.isfinite(after) else
-           "      after correction    n/a"]
-    if np.isfinite(before):
-        out.append("")
-        if before > 0.25:
-            out.append("  A large share means an implied return tells you more about which")
-            out.append("  firm wrote it than about the stock -- the anchoring effect the")
-            out.append("  correction exists to remove.")
-        else:
-            out.append("  A small share means firm identity is not the dominant axis of")
-            out.append("  disagreement in this panel, so step (a) is a minor correction.")
+           f"  measured on the {scope}: {before.n_obs} records, "
+           f"{before.n_firms} firms ({before.obs_per_firm:.1f} per firm)",
+           "",
+           "  share of variance in log implied return explained by firm identity,",
+           "  after removing each ticker's own mean (so a firm's coverage mix",
+           "  cannot masquerade as its anchoring habit)",
+           f"  {'':<22}{'raw R^2':>10}{'adjusted':>11}",
+           f"  {'before correction':<22}{before.share:>10.3f}{before.adjusted:>11.3f}",
+           f"  {'after correction':<22}{after.share:>10.3f}{after.adjusted:>11.3f}"]
+    if not before.reliable:
+        out += ["",
+                "  NOT RELIABLE: too few records per firm. With roughly one record",
+                "  each, firm dummies fit the data perfectly whatever the truth is,",
+                "  so the raw share is near 1.0 by construction. The adjusted figure",
+                "  is the one to read, and it goes negative exactly when the fit is",
+                "  indistinguishable from noise."]
+    elif before.adjusted > 0.25:
+        out += ["",
+                "  A large share means an implied return tells you more about which",
+                "  firm wrote it than about the stock. That is the anchoring effect",
+                "  the correction exists to remove, and it is present here."]
+    else:
+        out += ["",
+                "  A small share means firm identity is not the dominant axis of",
+                "  disagreement in this panel, so step (a) is a minor correction."]
     return out
 
 

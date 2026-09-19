@@ -83,7 +83,7 @@ export default function App() {
             <h2>{data.display_name} price &amp; forward confidence cone</h2>
             <p>Actual price leading up to now, then the aggregate forecast's median and nested confidence bands going forward.</p>
           </div>
-          <FanChart asset={data.asset} history={data.spot_history} forecasts={data.forecasts} />
+          <FanChart asset={data.asset} history={data.spot_history} forecasts={data.forecasts} gapFillForecasts={data.gap_fill_forecasts} />
         </section>
       )}
 

@@ -65,6 +65,23 @@ export interface SpotHistoryPoint {
   price: number;
 }
 
+// A model-filled gap point (geometric-Brownian-motion term-structure
+// interpolation between two real forecast dates too far apart to connect
+// directly) -- NOT a market-implied forecast. See aggregation.py's
+// "CROSS-DATE TERM STRUCTURE" section. Deliberately a narrower shape than
+// AggregateForecast (no sources, no pdf/grid, no confidence score) since
+// there's no market liquidity behind this number.
+export interface InterpolatedForecast {
+  asset: string;
+  target_date: string;
+  period_label: string;
+  mean: number;
+  median: number;
+  confidence_bands: ConfidenceBand[];
+  lead_hours: number;
+  is_interpolated: true;
+}
+
 export interface SourceError {
   source: string;
   source_type: string;
@@ -110,6 +127,7 @@ export interface DashboardPayload {
   source_errors: SourceError[];
   touch_forecasts: TouchGroup[];
   touch_errors: { source: string; error: string }[];
+  gap_fill_forecasts: InterpolatedForecast[];
   spot_history: SpotHistoryPoint[];
   sources_queried: { name: string; source_type: string }[];
   error?: string;

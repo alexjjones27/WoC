@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 import spot_price
 from adapters.registry import get_adapter
-from aggregation import build_dashboard, build_touch_groups
+from aggregation import build_dashboard, build_gap_fill_forecasts, build_touch_groups
 from cache import TTLCache
 from common.assets import get_asset
 from common.distribution import SourceFetchResult, TouchFetchResult
@@ -70,6 +70,7 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
 
     forecasts, source_errors = build_dashboard(results)
     touch_groups, touch_errors = build_touch_groups(touch_results)
+    gap_fill_forecasts = build_gap_fill_forecasts(forecasts)
 
     payload = {
         "asset": asset.symbol,
@@ -80,6 +81,7 @@ def get_dashboard_payload(symbol: str, force_refresh: bool = False) -> dict:
         "source_errors": source_errors,
         "touch_forecasts": [_touch_group_to_dict(g) for g in touch_groups],
         "touch_errors": touch_errors,
+        "gap_fill_forecasts": [dataclasses.asdict(g) for g in gap_fill_forecasts],
         "spot_history": spot_history,
         "sources_queried": [
             {"name": name, "source_type": getattr(get_adapter(name), "source_type", "unknown")}

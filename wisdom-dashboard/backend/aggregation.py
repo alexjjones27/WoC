@@ -111,7 +111,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 
@@ -615,3 +615,193 @@ def build_touch_groups(results: list[TouchFetchResult]) -> tuple[list[TouchGroup
         sources = sorted(groups[expiry_date], key=lambda t: t.source_name)
         out.append(TouchGroup(expiry_date=expiry_date.isoformat(), period_label=sources[0].period_label, sources=sources))
     return out, errors
+
+
+# ---------------------------------------------------------------------------
+# CROSS-DATE TERM STRUCTURE: fills the gap between real-market forecast
+# dates (see wisdom-dashboard/README.md's "1-week-to-3-month gap") with a
+# principled, model-based interpolation instead of a stark visual break --
+# the "joint cross-date model" flagged as deferred everywhere else in this
+# module's docstring.
+#
+# Method: each REAL AggregateForecast already implies a distribution of
+# log(price) at its own target date -- we compute that distribution's own
+# mean and variance directly from its actual grid+pdf (no assumption that
+# any single date's distribution IS lognormal; we only use its first two
+# log-moments). Under geometric Brownian motion, E[log S_T] grows linearly
+# in T and Var[log S_T] accumulates linearly in T (it's the integral of
+# instantaneous variance) -- so for a GAP date T sitting between two real
+# dates T_i < T < T_j, linearly interpolating both the mean-log and
+# var-log between those two real anchor points is the standard way to
+# fill in a deterministic-but-time-varying-volatility process, without
+# assuming a single constant volatility applies across the whole horizon
+# (near-dated and far-dated markets often imply different annualized
+# vols -- this preserves that term structure rather than flattening it).
+#
+# This is explicitly a baseline model, not a claim BTC or oil literally
+# follows GBM -- see adapters/perp_futures.py's docstring for the same
+# caveat made about GBM as a forecasting tool. Every interpolated point is
+# tagged is_interpolated=True end to end (aggregation -> orchestrator ->
+# API -> frontend) specifically so it's never visually confusable with a
+# real market-implied forecast -- see FanChart.tsx for how it's drawn
+# differently.
+# ---------------------------------------------------------------------------
+
+def _norm_ppf(p: float) -> float:
+    """Inverse standard normal CDF (probit), via Peter Acklam's rational
+    approximation (~1.15e-9 relative error) -- avoids adding scipy as a
+    dependency for one function, consistent with this backend's
+    stdlib/numpy-only footprint elsewhere (see isotonic.py for the same
+    tradeoff on a different function)."""
+    if p <= 0.0:
+        return float("-inf")
+    if p >= 1.0:
+        return float("inf")
+    a = [-3.969683028665376e01, 2.209460984245205e02, -2.759285104469687e02, 1.383577518672690e02, -3.066479806614716e01, 2.506628277459239e00]
+    b = [-5.447609879822406e01, 1.615858368580409e02, -1.556989798598866e02, 6.680131188771972e01, -1.328068155288572e01]
+    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e00, -2.549732539343734e00, 4.374664141464968e00, 2.938163982698783e00]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
+    p_low = 0.02425
+    p_high = 1 - p_low
+    if p < p_low:
+        q = math.sqrt(-2 * math.log(p))
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+    if p <= p_high:
+        q = p - 0.5
+        r = q * q
+        return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+    q = math.sqrt(-2 * math.log(1 - p))
+    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+
+
+@dataclass
+class TermStructurePoint:
+    t_years: float
+    mean_log: float
+    var_log: float
+    target_date: str
+
+
+def _log_moments(grid_edges: list[float], pdf: list[float]) -> tuple[float, float]:
+    """(E[log price], Var[log price]) computed directly from a real
+    forecast's own grid+pdf -- empirical, not assumed lognormal."""
+    edges = np.array(grid_edges)
+    centers = (edges[:-1] + edges[1:]) / 2.0
+    weights = np.array(pdf)
+    log_centers = np.log(np.clip(centers, 1e-9, None))
+    mean_log = float(np.sum(weights * log_centers))
+    var_log = float(np.sum(weights * (log_centers - mean_log) ** 2))
+    return mean_log, var_log
+
+
+def build_term_structure(forecasts: list[AggregateForecast]) -> list[TermStructurePoint]:
+    points = []
+    for f in forecasts:
+        t_years = f.lead_hours / (365.25 * 24)
+        if t_years <= 0:
+            continue
+        mean_log, var_log = _log_moments(f.grid_edges, f.pdf)
+        points.append(TermStructurePoint(t_years=t_years, mean_log=mean_log, var_log=var_log, target_date=f.target_date))
+    points.sort(key=lambda p: p.t_years)
+    return points
+
+
+def interpolate_log_moments(points: list[TermStructurePoint], t_years: float) -> tuple[float, float] | None:
+    """Piecewise-linear in T between the two real anchors bracketing
+    `t_years`. Outside the observed range, extrapolates using the nearest
+    anchor's own average rate from t=0 (i.e. assumes its drift/vol rate
+    continues) -- a conservative, clearly-flagged-as-a-guess fallback that
+    in practice is unreachable via build_dashboard's normal use (gaps are
+    only ever filled BETWEEN two real dates), kept for robustness."""
+    if not points:
+        return None
+    if t_years <= points[0].t_years:
+        t0 = max(points[0].t_years, 1e-9)
+        return (points[0].mean_log / t0) * t_years, (points[0].var_log / t0) * t_years
+    if t_years >= points[-1].t_years:
+        tn = points[-1].t_years
+        return (points[-1].mean_log / tn) * t_years, (points[-1].var_log / tn) * t_years
+    for i in range(len(points) - 1):
+        if points[i].t_years <= t_years <= points[i + 1].t_years:
+            span = points[i + 1].t_years - points[i].t_years
+            frac = (t_years - points[i].t_years) / span if span > 0 else 0.0
+            mean_log = points[i].mean_log + frac * (points[i + 1].mean_log - points[i].mean_log)
+            var_log = points[i].var_log + frac * (points[i + 1].var_log - points[i].var_log)
+            return mean_log, var_log
+    return None  # unreachable given the sorted-points invariant above
+
+
+@dataclass
+class InterpolatedForecast:
+    """A model-filled gap point -- NOT a market-implied forecast. Carries
+    only what the fan chart needs (median + confidence bands), not the
+    full AggregateForecast shape (no sources, no pdf/grid, no confidence
+    score -- there's no market liquidity behind this number, so those
+    fields don't mean anything here)."""
+
+    asset: str
+    target_date: str
+    period_label: str
+    mean: float
+    median: float
+    confidence_bands: list[ConfidenceBand]
+    lead_hours: float
+    is_interpolated: bool = True
+
+
+def lognormal_forecast(asset: str, target_date: str, period_label: str, mean_log: float, var_log: float, lead_hours: float) -> InterpolatedForecast:
+    std_log = math.sqrt(max(var_log, 1e-12))
+    median = math.exp(mean_log)
+    mean = math.exp(mean_log + var_log / 2.0)  # true lognormal mean, not exp(mean_log)
+    bands = []
+    for level in CONFIDENCE_LEVELS:
+        half = level / 2.0
+        lo = math.exp(mean_log + _norm_ppf(0.5 - half) * std_log)
+        hi = math.exp(mean_log + _norm_ppf(0.5 + half) * std_log)
+        bands.append(ConfidenceBand(level=level, low=lo, high=hi))
+    return InterpolatedForecast(asset=asset, target_date=target_date, period_label=period_label, mean=mean, median=median, confidence_bands=bands, lead_hours=lead_hours)
+
+
+# Matches FanChart.tsx's MAX_CONNECT_GAP_DAYS -- dates farther apart than
+# this don't get a filled cone between them (there's no real data to base
+# one on); this is exactly that gap, now filled with the model instead.
+GAP_THRESHOLD_DAYS = 3
+INTERPOLATION_STEP_DAYS = 14
+
+
+def build_gap_fill_forecasts(forecasts: list[AggregateForecast]) -> list[InterpolatedForecast]:
+    """For every pair of adjacent real forecast dates more than
+    GAP_THRESHOLD_DAYS apart, generates InterpolatedForecast points every
+    INTERPOLATION_STEP_DAYS across the gap. Never generates a point before
+    the first or after the last real forecast -- this fills gaps, it
+    doesn't extend the horizon."""
+    if len(forecasts) < 2:
+        return []
+    term_structure = build_term_structure(forecasts)
+    if len(term_structure) < 2:
+        return []
+
+    sorted_forecasts = sorted(forecasts, key=lambda f: f.target_date)
+    now = datetime.now(timezone.utc)
+    out: list[InterpolatedForecast] = []
+
+    for f1, f2 in zip(sorted_forecasts, sorted_forecasts[1:]):
+        d1 = datetime.fromisoformat(f1.target_date).replace(tzinfo=timezone.utc)
+        d2 = datetime.fromisoformat(f2.target_date).replace(tzinfo=timezone.utc)
+        if (d2 - d1).days <= GAP_THRESHOLD_DAYS:
+            continue
+        cursor = d1 + timedelta(days=INTERPOLATION_STEP_DAYS)
+        while cursor < d2:
+            t_years = (cursor - now).total_seconds() / (365.25 * 24 * 3600)
+            if t_years > 0:
+                moments = interpolate_log_moments(term_structure, t_years)
+                if moments is not None:
+                    mean_log, var_log = moments
+                    lead_hours = t_years * 365.25 * 24
+                    out.append(lognormal_forecast(
+                        asset=f1.asset, target_date=cursor.date().isoformat(),
+                        period_label=cursor.strftime("%b %-d, %Y"),
+                        mean_log=mean_log, var_log=var_log, lead_hours=lead_hours,
+                    ))
+            cursor += timedelta(days=INTERPOLATION_STEP_DAYS)
+    return out

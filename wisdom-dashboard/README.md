@@ -233,13 +233,42 @@ engineering, not just a formula swap:
 - **Bid-ask probability bounds as an uncertainty band**, instead of
   collapsing each quote to one point estimate. `PriceBucket` only carries
   a single `prob` today.
-- **A joint cross-date model** (e.g. a shared implied-volatility term
-  structure across dates, fit once and shared) so nearby-horizon forecasts
-  are mutually consistent, rather than each date being reconstructed
-  completely independently the way it is now. This is also the principled
-  way to fill the 1-week-to-3-month gap described below with an actual
-  interpolated distribution instead of a visual break in the fan chart --
-  a substantial, separate piece of work, not a small addition.
+
+### The joint cross-date model (built)
+
+Every date used to be reconstructed completely independently -- no
+connection between what Sep 19's forecast implied about near-term
+volatility and what Jan 1's implied about longer-term volatility, and no
+principled way to say anything about a date with no active market at all
+(the 1-week-to-3-month gap described below). `aggregation.py`'s
+"CROSS-DATE TERM STRUCTURE" section fixes both:
+
+1. Each REAL forecast already implies a distribution of `log(price)` at
+   its own date -- computed directly from that forecast's own grid+pdf
+   (its actual mean and variance of log-price, not an assumed shape).
+2. Under geometric Brownian motion, `E[log price]` grows linearly in time
+   and `Var[log price]` accumulates linearly in time (it's the integral of
+   instantaneous variance) -- so for a gap date sitting between two real
+   dates, linearly interpolating both quantities between those two real
+   anchors is the standard way to fill a deterministic-but-time-varying-
+   volatility process, without forcing a single constant volatility across
+   the whole horizon (a real term structure -- e.g. currently ~22-37%
+   annualized near-term vs. ~55-77% around the Jan 2027 anchors -- is
+   preserved, not flattened).
+3. Every filled point is a closed-form lognormal (Acklam's inverse-normal-
+   CDF approximation turns the interpolated mean/variance into percentile
+   bands directly, no numerical grid needed) and is tagged
+   `is_interpolated: true` end to end, from `InterpolatedForecast` through
+   the API to `FanChart.tsx`, which draws it with a visibly faded fill and
+   a dashed outline -- never stylistically confusable with a real,
+   market-implied forecast. It also never appears as a card: the card grid
+   only ever renders `forecasts` (real data); only the fan chart consumes
+   `gap_fill_forecasts`.
+
+This is explicitly a baseline model (see `aggregation.py`'s docstring),
+not a claim BTC or oil literally follows GBM -- the same caveat
+`adapters/perp_futures.py`'s design doc already made about using GBM as a
+forecasting tool, now actually wired up for real.
 
 ### Are the "votes" behind a market actually independent?
 

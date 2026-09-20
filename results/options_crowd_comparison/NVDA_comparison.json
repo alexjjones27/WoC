@@ -1,0 +1,29 @@
+{
+  "symbol": "NVDA",
+  "spot": 222.27000427246094,
+  "options": {
+    "expiration": "2027-09-17",
+    "t_years": 0.9911019849418207,
+    "n_contracts_used": 67,
+    "risk_free_rate": 0.039779999256134034,
+    "dividend_yield": 0.004499032621487645,
+    "forward_price_check": 230.17960934816603,
+    "risk_neutral_mean": 231.73066994002716,
+    "risk_neutral_median": 227.0,
+    "p10": 128.0,
+    "p25": 173.0,
+    "p75": 285.0,
+    "p90": 343.0,
+    "implied_annualized_vol": 0.3883851687889333
+  },
+  "analyst": {
+    "consensus_mean_target": 324.0,
+    "consensus_median_target": 317.0,
+    "n_firms": 38,
+    "dispersion_pct": 0.21502689548958961,
+    "implied_return": 0.4576865693619969
+  },
+  "cross_check": {
+    "options_implied_P_exceed_analyst_target": 0.136377001407743
+  }
+}

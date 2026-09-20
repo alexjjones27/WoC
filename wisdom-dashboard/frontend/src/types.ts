@@ -139,3 +139,83 @@ export interface AssetInfo {
   adapters: string[];
   enabled: boolean;
 }
+
+// ---- Smart money (SEC 13F) + combined four-signal wisdom-of-crowds ----
+
+export interface PortfolioHolding {
+  ticker: string;
+  sector: string;
+  smart_money_weight: number;
+  analyst_implied_return: number | null;
+  options_p_exceed_target: number | null;
+  retail_attention_ratio: number | null;
+  combined_score: number;
+  portfolio_weight: number;
+  n_signals_available: number;
+}
+
+export interface SmartMoneyPortfolioPayload {
+  portfolio: PortfolioHolding[];
+  coverage: {
+    universe_size: number;
+    smart_money: number;
+    analyst: number;
+    options: number;
+    retail: number;
+  };
+}
+
+export interface BacktestStats {
+  total_return: number;
+  cagr: number | null;
+  annualized_vol: number | null;
+  max_drawdown: number;
+  final_nav: number;
+}
+
+export interface SmartMoneyBacktestPayload {
+  fixed_panel?: { stats: Record<string, BacktestStats>; nav: { period_labels: string[]; nav: Record<string, number[]> } };
+  scaling_panels?: { stats: Record<string, BacktestStats>; nav: { period_labels: string[]; nav: Record<string, number[]> } };
+  significance?: Record<string, {
+    significance_vs_spy: { p_value: number; annualized_spread_pct: number; significant_at_5pct: boolean };
+    factor_regression_vs_spy: { alpha_annualized_pct: number; alpha_p_value: number; beta: number; r_squared: number };
+  }>;
+}
+
+export interface TickerLookupPayload {
+  ticker: string;
+  smart_money_weight: number;
+  analyst: { spot: number; consensus_target: number; n_firms: number; implied_return: number } | null;
+  options: { implied_vol: number | null; p_exceed_analyst_target: number | null } | null;
+  retail_attention: { attention_ratio: number; resolved_title: string } | null;
+}
+
+export type ThreeCrowdsAsset = "BTC" | "OIL" | "ETH" | "GOLD";
+
+export interface ThreeCrowdsPayload {
+  asset: ThreeCrowdsAsset;
+  error?: string;
+  real_spot: number;
+  prediction_market: {
+    target_date: string;
+    lead_hours: number;
+    horizon_mismatch_hours: number;
+    is_interpolated: boolean;
+    mean: number;
+    median: number;
+    ci_68: [number, number] | null;
+    ci_95: [number, number] | null;
+  };
+  pm_implied_return: number | null;
+  options: {
+    proxy_ticker: string;
+    proxy_note: string;
+    t_years: number;
+    mean_return: number;
+    median_return: number;
+    p10_return: number;
+    p90_return: number;
+  };
+  retail_attention: { attention_ratio: number; resolved_title: string } | null;
+  cross_check_p_options_exceed_pm_median: number | null;
+}

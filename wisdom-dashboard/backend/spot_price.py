@@ -13,7 +13,7 @@ COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 # CoinGecko symbol per asset. Only BTC is wired to an adapter today, but
 # this stays a lookup (not a hardcoded URL) so a second asset's spot line is
 # "add a row here", same shape as common/assets.py.
-COINGECKO_ID = {"BTC": "bitcoin"}
+COINGECKO_ID = {"BTC": "bitcoin", "ETH": "ethereum"}
 
 
 def fetch_recent_history(asset: str, days: int = 30) -> list[dict]:

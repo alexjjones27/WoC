@@ -1,0 +1,71 @@
+{
+  "N10": {
+    "significance_vs_spy": {
+      "n_periods": 53,
+      "mean_quarterly_spread_pct": 0.5957736717231902,
+      "annualized_spread_pct": 2.3830946868927607,
+      "t_stat": 1.0855826128782398,
+      "p_value": 0.28267083762497425,
+      "bootstrap_ci_95_annualized_pct": [
+        -2.1591248000612024,
+        6.427543390530062
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.86105,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": 0.08407928957798877,
+      "alpha_annualized_pct": 0.3363171583119551,
+      "alpha_p_value": 0.8925344686865919,
+      "alpha_significant_at_5pct": false,
+      "beta": 1.1644783832882042,
+      "r_squared": 0.7355217672127831
+    }
+  },
+  "N20": {
+    "significance_vs_spy": {
+      "n_periods": 53,
+      "mean_quarterly_spread_pct": 0.61296578287352,
+      "annualized_spread_pct": 2.45186313149408,
+      "t_stat": 1.1201027687649698,
+      "p_value": 0.2678168376836696,
+      "bootstrap_ci_95_annualized_pct": [
+        -1.836465990811795,
+        6.667757897001627
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.87115,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": 0.14703485604761324,
+      "alpha_annualized_pct": 0.588139424190453,
+      "alpha_p_value": 0.8135863181574226,
+      "alpha_significant_at_5pct": false,
+      "beta": 1.1497682371399438,
+      "r_squared": 0.7298637444013314
+    }
+  },
+  "N50": {
+    "significance_vs_spy": {
+      "n_periods": 53,
+      "mean_quarterly_spread_pct": 0.3403143358499159,
+      "annualized_spread_pct": 1.3612573433996635,
+      "t_stat": 0.6598796772721109,
+      "p_value": 0.5122433449995518,
+      "bootstrap_ci_95_annualized_pct": [
+        -2.6151231302933504,
+        5.3239272387319065
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.7511,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": -0.006373767456064654,
+      "alpha_annualized_pct": -0.025495069824258615,
+      "alpha_p_value": 0.9914173779857367,
+      "alpha_significant_at_5pct": false,
+      "beta": 1.1114389774966111,
+      "r_squared": 0.7364593442148859
+    }
+  }
+}

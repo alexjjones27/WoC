@@ -70,6 +70,8 @@ MIN_VOLUME_MANA = 50.0
 ASSET_SEARCH_TERMS = {
     "BTC": ["bitcoin", "btc"],
     "OIL": ["crude oil", "wti oil", "oil price"],
+    "ETH": ["ethereum", "eth price"],
+    "GOLD": ["gold price", "price of gold"],
 }
 
 # User-generated titles aren't consistently formatted -- confirmed live,

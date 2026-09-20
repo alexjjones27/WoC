@@ -15,6 +15,8 @@
   --good: #0ca30c;
   --warning: #fab219;
   --serious: #ec835a;
+  --pm-color: #3987e5;
+  --options-color: #ec835a;
   color-scheme: dark;
 }
 
@@ -541,6 +543,210 @@ body {
   height: 8px;
   border-radius: 2px;
 }
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tab-btn:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+.tab-btn.active {
+  background: var(--surface-raised);
+  border-color: var(--border);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.page-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.sm-section {
+  margin-top: 40px;
+}
+.sm-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.sm-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 78ch;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.stat-tile {
+  background: var(--surface);
+  padding: 14px 16px;
+}
+.stat-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.value-gain { color: var(--good); }
+.value-loss { color: var(--serious); }
+
+.table-scroll {
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.data-table th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gridline);
+  white-space: nowrap;
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.data-table .row-highlight td {
+  background: var(--surface-raised);
+  font-weight: 600;
+}
+.ticker-pill {
+  font-family: ui-monospace, monospace;
+  font-size: 11.5px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.lookup-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.lookup-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 220px;
+}
+.lookup-input:focus {
+  outline: 1px solid var(--accent);
+}
+.lookup-result {
+  margin-top: 24px;
+}
+.lookup-result h3 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.asset-toggle {
+  display: flex;
+  gap: 4px;
+}
+.toggle-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toggle-btn.active {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-color: var(--accent);
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-top: 8px;
+}
+.chart-axis-line {
+  stroke: var(--gridline);
+  stroke-width: 1;
+}
+.chart-axis-text {
+  fill: var(--text-muted);
+}
+.chart-zero-line {
+  stroke: var(--baseline);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart-row-label {
+  fill: var(--text-primary);
+}
+
 .fanchart-note {
   font-size: 11px;
   color: var(--text-muted);

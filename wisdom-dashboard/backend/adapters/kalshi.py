@@ -98,6 +98,29 @@ ASSET_SERIES = {
         "touch_above": "KXWTIMAX",
         "touch_below": "KXWTIMIN",
     },
+    "ETH": {
+        "ladder": "KXETHD",
+        "range": "KXETHY",
+        "touch_above": "KXETHMAXY",
+        "touch_below": "KXETHMINY",
+    },
+    # Confirmed live: Kalshi runs a real gold ladder (KXGOLDD, "greater"-
+    # type strikes, same shape as BTC/oil's daily ladder) -- but no
+    # currently-open bucketed year-end range or touch series exist yet
+    # (KXGOLDW looked like a range series by name but is actually ANOTHER
+    # ladder, not true mutually-exclusive buckets -- using it as "range"
+    # would silently misinterpret cumulative "P(price>strike)" ladder rungs
+    # as if they were disjoint bucket probabilities, so it's deliberately
+    # NOT used here). "range"/touch tickers below match Kalshi's naming
+    # convention in case they open later; until then this adapter just
+    # reports 0 events for them, the same graceful-degradation path every
+    # other series-with-nothing-open already takes.
+    "GOLD": {
+        "ladder": "KXGOLDD",
+        "range": "KXGOLDY",
+        "touch_above": "KXGOLDMAXY",
+        "touch_below": "KXGOLDMINY",
+    },
 }
 
 

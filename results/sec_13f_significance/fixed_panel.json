@@ -1,0 +1,94 @@
+{
+  "consensus": {
+    "significance_vs_spy": {
+      "n_periods": 22,
+      "mean_quarterly_spread_pct": -0.3338475106004213,
+      "annualized_spread_pct": -1.3353900424016851,
+      "t_stat": -0.4445558088786384,
+      "p_value": 0.6611886290656517,
+      "bootstrap_ci_95_annualized_pct": [
+        -6.856201649749667,
+        4.5463025248404225
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.31075,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": 0.3636860909865558,
+      "alpha_annualized_pct": 1.4547443639462232,
+      "alpha_p_value": 0.6728606733171403,
+      "alpha_significant_at_5pct": false,
+      "beta": 0.7885548752686048,
+      "r_squared": 0.6354277767128172
+    }
+  },
+  "BERKSHIRE": {
+    "significance_vs_spy": {
+      "n_periods": 22,
+      "mean_quarterly_spread_pct": -0.17761338956407516,
+      "annualized_spread_pct": -0.7104535582563006,
+      "t_stat": -0.20136313198722944,
+      "p_value": 0.8423523138755415,
+      "bootstrap_ci_95_annualized_pct": [
+        -7.077810261926504,
+        6.273362770169926
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.40085,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": 0.8521257956635199,
+      "alpha_annualized_pct": 3.4085031826540795,
+      "alpha_p_value": 0.38528152838215624,
+      "alpha_significant_at_5pct": false,
+      "beta": 0.6878525565422466,
+      "r_squared": 0.5089888929015882
+    }
+  },
+  "ELLIOTT": {
+    "significance_vs_spy": {
+      "n_periods": 22,
+      "mean_quarterly_spread_pct": 3.5740930121431993,
+      "annualized_spread_pct": 14.296372048572797,
+      "t_stat": 1.919270060893566,
+      "p_value": 0.06864158104626839,
+      "bootstrap_ci_95_annualized_pct": [
+        0.24710677911853832,
+        28.46742660797007
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.97715,
+      "significant_at_5pct": false
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": 6.5562840879545154,
+      "alpha_annualized_pct": 26.225136351818062,
+      "alpha_p_value": 0.0018287414970181715,
+      "alpha_significant_at_5pct": true,
+      "beta": 0.09600087714319305,
+      "r_squared": 0.005549485423096523
+    }
+  },
+  "ICAHN": {
+    "significance_vs_spy": {
+      "n_periods": 22,
+      "mean_quarterly_spread_pct": -7.347434691060169,
+      "annualized_spread_pct": -29.389738764240676,
+      "t_stat": -2.7867958085551825,
+      "p_value": 0.01105182414754724,
+      "bootstrap_ci_95_annualized_pct": [
+        -50.104271656693285,
+        -9.648033835261186
+      ],
+      "bootstrap_frac_periods_spread_positive": 0.0013,
+      "significant_at_5pct": true
+    },
+    "factor_regression_vs_spy": {
+      "alpha_quarterly_pct": -4.297910509283934,
+      "alpha_annualized_pct": -17.191642037135736,
+      "alpha_p_value": 0.1505560174449294,
+      "alpha_significant_at_5pct": false,
+      "beta": 0.07559002244470509,
+      "r_squared": 0.0013937293138964746
+    }
+  }
+}

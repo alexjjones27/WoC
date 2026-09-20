@@ -7,14 +7,27 @@ can call this API directly.
 """
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from common.assets import ASSET_REGISTRY
 from orchestrator import get_dashboard_payload
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from combined_signals_service import (  # noqa: E402
+    load_smart_money_backtest,
+    load_smart_money_portfolio,
+    lookup_ticker,
+    three_crowds,
+)
 
 app = FastAPI(title="Wisdom of the Markets")
 
@@ -44,6 +57,56 @@ def list_assets():
 @app.get("/api/forecast/{symbol}")
 def forecast(symbol: str, refresh: bool = False):
     return get_dashboard_payload(symbol.upper(), force_refresh=refresh)
+
+
+@app.get("/api/smart-money/portfolio")
+def smart_money_portfolio():
+    """Pre-computed S&P 500 four-signal portfolio (smart money, analyst,
+    options, retail attention) -- this takes ~50 minutes to build (options
+    liquidity checks and Wikipedia rate limits are the bottleneck), so it's
+    served from the last run's saved JSON, not recomputed per request."""
+    try:
+        return load_smart_money_portfolio()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/api/smart-money/backtest")
+def smart_money_backtest():
+    """Pre-computed backtest results: the fixed 10-fund panel (2021-2026)
+    and the objective N=10/20/50 rolling panels (2013-2026), plus
+    significance testing and factor decomposition against SPY."""
+    try:
+        return load_smart_money_backtest()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/api/lookup/{ticker}")
+def stock_lookup(ticker: str):
+    """Live four-signal lookup for any ticker -- smart money weight from
+    the cached N=50 13F panel, plus a live fetch of analyst consensus,
+    options-implied distribution, and Wikipedia retail attention. Unlike
+    the S&P 500 portfolio above, this computes fresh per request (a single
+    ticker is fast enough: a few seconds, not tens of minutes)."""
+    try:
+        return lookup_ticker(ticker.upper())
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/three-crowds/{asset}")
+def three_crowds_view(asset: str):
+    """Live BTC/oil comparison: prediction-market consensus (reuses
+    get_dashboard_payload below), options-implied distribution (via IBIT/
+    USO), and retail attention -- computed fresh per request."""
+    asset = asset.upper()
+    if asset not in ("BTC", "OIL", "ETH", "GOLD"):
+        raise HTTPException(status_code=404, detail="asset must be one of BTC, OIL, ETH, GOLD")
+    try:
+        return three_crowds(asset)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # Serve the built frontend (frontend/npm run build -> frontend/dist), if

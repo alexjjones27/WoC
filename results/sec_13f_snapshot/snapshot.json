@@ -1,0 +1,382 @@
+{
+  "top10_funds": [
+    {
+      "CIK": 1067983,
+      "FILINGMANAGER_NAME": "Berkshire Hathaway Inc",
+      "TABLEVALUETOTAL": 299253556246,
+      "TABLEENTRYTOTAL": 89
+    },
+    {
+      "CIK": 1135730,
+      "FILINGMANAGER_NAME": "COATUE MANAGEMENT LLC",
+      "TABLEVALUETOTAL": 48629053706,
+      "TABLEENTRYTOTAL": 211
+    },
+    {
+      "CIK": 1103804,
+      "FILINGMANAGER_NAME": "VIKING GLOBAL INVESTORS LP",
+      "TABLEVALUETOTAL": 35079228595,
+      "TABLEENTRYTOTAL": 90
+    },
+    {
+      "CIK": 1167483,
+      "FILINGMANAGER_NAME": "TIGER GLOBAL MANAGEMENT LLC",
+      "TABLEVALUETOTAL": 23981506027,
+      "TABLEENTRYTOTAL": 46
+    },
+    {
+      "CIK": 1791786,
+      "FILINGMANAGER_NAME": "Elliott Investment Management L.P.",
+      "TABLEVALUETOTAL": 22669814953,
+      "TABLEENTRYTOTAL": 29
+    },
+    {
+      "CIK": 909661,
+      "FILINGMANAGER_NAME": "FARALLON CAPITAL MANAGEMENT, L.L.C.",
+      "TABLEVALUETOTAL": 21675731270,
+      "TABLEENTRYTOTAL": 89
+    },
+    {
+      "CIK": 2026053,
+      "FILINGMANAGER_NAME": "PERSHING SQUARE INC.",
+      "TABLEVALUETOTAL": 19465692772,
+      "TABLEENTRYTOTAL": 15
+    },
+    {
+      "CIK": 1061165,
+      "FILINGMANAGER_NAME": "LONE PINE CAPITAL LLC",
+      "TABLEVALUETOTAL": 16357760275,
+      "TABLEENTRYTOTAL": 34
+    },
+    {
+      "CIK": 921669,
+      "FILINGMANAGER_NAME": "ICAHN CARL C",
+      "TABLEVALUETOTAL": 8264090525,
+      "TABLEENTRYTOTAL": 18
+    },
+    {
+      "CIK": 1029160,
+      "FILINGMANAGER_NAME": "SOROS FUND MANAGEMENT LLC",
+      "TABLEVALUETOTAL": 8143628824,
+      "TABLEENTRYTOTAL": 266
+    }
+  ],
+  "consensus_portfolio": [
+    {
+      "cusip": "037833100",
+      "name": "APPLE INC",
+      "ticker": "AAPL",
+      "n_funds": 2,
+      "total_value": 66103524039.0,
+      "weight": 0.18809298714165434,
+      "fund_names": [
+        "Berkshire Hathaway Inc",
+        "SOROS FUND MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "025816109",
+      "name": "AMERICAN EXPRESS CO",
+      "ticker": "AXP",
+      "n_funds": 1,
+      "total_value": 51282319275.0,
+      "weight": 0.14592027823351592,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "191216100",
+      "name": "COCA COLA CO",
+      "ticker": "KO",
+      "n_funds": 2,
+      "total_value": 32520242757.0,
+      "weight": 0.0925340924203534,
+      "fund_names": [
+        "Berkshire Hathaway Inc",
+        "SOROS FUND MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "02079K305",
+      "name": "ALPHABET INC",
+      "ticker": "GOOGL",
+      "n_funds": 5,
+      "total_value": 32257990543.0,
+      "weight": 0.09178787195733135,
+      "fund_names": [
+        "Berkshire Hathaway Inc",
+        "COATUE MANAGEMENT LLC",
+        "LONE PINE CAPITAL LLC",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "060505104",
+      "name": "BANK OF AMER CORP",
+      "ticker": "BAC",
+      "n_funds": 1,
+      "total_value": 27543790975.0,
+      "weight": 0.07837394446075985,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "166764100",
+      "name": "CHEVRON CORPORATION",
+      "ticker": "CVX",
+      "n_funds": 1,
+      "total_value": 13986141890.0,
+      "weight": 0.03979659549050752,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "674599105",
+      "name": "OCCIDENTAL PETE CORP",
+      "ticker": "OXY",
+      "n_funds": 1,
+      "total_value": 12868205304.0,
+      "weight": 0.03661558456934055,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "H1467J104",
+      "name": "CHUBB LIMITED",
+      "ticker": null,
+      "n_funds": 3,
+      "total_value": 11806431445.0,
+      "weight": 0.03359438078767219,
+      "fund_names": [
+        "Berkshire Hathaway Inc",
+        "SOROS FUND MANAGEMENT LLC",
+        "VIKING GLOBAL INVESTORS LP"
+      ]
+    },
+    {
+      "cusip": "615369105",
+      "name": "MOODYS CORP",
+      "ticker": "MCO",
+      "n_funds": 1,
+      "total_value": 11173435852.0,
+      "weight": 0.0317932357857109,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "02079K107",
+      "name": "ALPHABET INC",
+      "ticker": "GOOG",
+      "n_funds": 2,
+      "total_value": 9927452237.0,
+      "weight": 0.02824787593565755,
+      "fund_names": [
+        "Berkshire Hathaway Inc",
+        "COATUE MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "023135106",
+      "name": "AMAZON COM INC",
+      "ticker": "AMZN",
+      "n_funds": 6,
+      "total_value": 8961250087.0,
+      "weight": 0.02549861481504063,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "FARALLON CAPITAL MANAGEMENT, L.L.C.",
+        "PERSHING SQUARE INC.",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC",
+        "VIKING GLOBAL INVESTORS LP"
+      ]
+    },
+    {
+      "cusip": "874039100",
+      "name": "TAIWAN SEMICONDUCTOR MANUFAC",
+      "ticker": "TSM",
+      "n_funds": 5,
+      "total_value": 8399262375.0,
+      "weight": 0.023899517807374003,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "LONE PINE CAPITAL LLC",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC",
+        "VIKING GLOBAL INVESTORS LP"
+      ]
+    },
+    {
+      "cusip": "500754106",
+      "name": "KRAFT HEINZ CO",
+      "ticker": "KHC",
+      "n_funds": 1,
+      "total_value": 7691494401.0,
+      "weight": 0.021885613187791024,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "23918K108",
+      "name": "DAVITA INC",
+      "ticker": "DVA",
+      "n_funds": 1,
+      "total_value": 6425268898.0,
+      "weight": 0.018282656451116916,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "30303M102",
+      "name": "META PLATFORMS INC",
+      "ticker": "META",
+      "n_funds": 5,
+      "total_value": 5877753713.0,
+      "weight": 0.016724740013994644,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "PERSHING SQUARE INC.",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC",
+        "VIKING GLOBAL INVESTORS LP"
+      ]
+    },
+    {
+      "cusip": "512807306",
+      "name": "LAM RESEARCH CORP",
+      "ticker": "LRCX",
+      "n_funds": 2,
+      "total_value": 5462167115.0,
+      "weight": 0.015542217209495755,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "247361702",
+      "name": "DELTA AIR LINES INC",
+      "ticker": "DAL",
+      "n_funds": 1,
+      "total_value": 5368591200.0,
+      "weight": 0.015275953441674857,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "594918104",
+      "name": "MICROSOFT CORP",
+      "ticker": "MSFT",
+      "n_funds": 6,
+      "total_value": 5286254421.0,
+      "weight": 0.015041669854848302,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "FARALLON CAPITAL MANAGEMENT, L.L.C.",
+        "PERSHING SQUARE INC.",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC",
+        "VIKING GLOBAL INVESTORS LP"
+      ]
+    },
+    {
+      "cusip": "038222105",
+      "name": "APPLIED MATLS INC",
+      "ticker": "AMAT",
+      "n_funds": 3,
+      "total_value": 5099629890.0,
+      "weight": 0.014510642711893106,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "LONE PINE CAPITAL LLC",
+        "TIGER GLOBAL MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "451100101",
+      "name": "Icahn Enterprises LP",
+      "ticker": "IEP",
+      "n_funds": 1,
+      "total_value": 4458616003.0,
+      "weight": 0.012686682211179433,
+      "fund_names": [
+        "ICAHN CARL C"
+      ]
+    },
+    {
+      "cusip": "89679M104",
+      "name": "TRIPLE FLAG PRECIOUS METAL",
+      "ticker": "TFPM",
+      "n_funds": 1,
+      "total_value": 3993248804.0,
+      "weight": 0.011362512163512804,
+      "fund_names": [
+        "Elliott Investment Management L.P."
+      ]
+    },
+    {
+      "cusip": "36828A101",
+      "name": "GE VERNOVA INC",
+      "ticker": "GEV",
+      "n_funds": 2,
+      "total_value": 3942448330.0,
+      "weight": 0.011217962942547906,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "829933100",
+      "name": "SIRIUSXM HOLDINGS INC",
+      "ticker": "SIRI",
+      "n_funds": 1,
+      "total_value": 3686802237.0,
+      "weight": 0.01049053973807406,
+      "fund_names": [
+        "Berkshire Hathaway Inc"
+      ]
+    },
+    {
+      "cusip": "67066G104",
+      "name": "NVIDIA CORPORATION",
+      "ticker": "NVDA",
+      "n_funds": 3,
+      "total_value": 3665369674.0,
+      "weight": 0.010429554868426366,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "SOROS FUND MANAGEMENT LLC",
+        "TIGER GLOBAL MANAGEMENT LLC"
+      ]
+    },
+    {
+      "cusip": "595112103",
+      "name": "MICRON TECHNOLOGY INC",
+      "ticker": "MU",
+      "n_funds": 2,
+      "total_value": 3652971175.0,
+      "weight": 0.010394275800526643,
+      "fund_names": [
+        "COATUE MANAGEMENT LLC",
+        "SOROS FUND MANAGEMENT LLC"
+      ]
+    }
+  ],
+  "position_changes_summary": {
+    "CLOSED": 267,
+    "NEW": 196,
+    "INCREASED": 185,
+    "DECREASED": 150,
+    "UNCHANGED": 117
+  }
+}

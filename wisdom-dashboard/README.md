@@ -2,16 +2,46 @@
 
 A dashboard that pulls forward-looking price information from multiple
 market-based sources and aggregates it into one probabilistic forecast per
-asset per future date.
+asset per future date. Four pages now, not one -- see "The four pages"
+below for what each one does and where its data comes from.
 
-**Phase 1 (built, live):** Bitcoin and Crude Oil (WTI), via Polymarket,
-Kalshi, and Manifold prediction markets.
-**Phase 2/3 (designed, not wired up):** options-implied distributions
-(Deribit) and futures/perpetual curves. The adapter interface and
-aggregation engine already support them; only the actual data-fetching
-logic is unwritten. See `backend/adapters/deribit_options.py` and
-`backend/adapters/perp_futures.py` for exactly what's missing and how it
-would be implemented.
+**Prediction markets (built, live):** Bitcoin, Crude Oil (WTI), Ethereum,
+and Gold, via Polymarket, Kalshi, and Manifold prediction markets. Gold and
+Ethereum were added the same way oil originally was -- one row each in
+`ASSET_SERIES`/`ASSET_SEARCH_TERMS`/`common/assets.py`, confirmed live
+first: Kalshi runs a real gold ladder (`KXGOLDD`) and a full Ethereum
+series family mirroring BTC's (`KXETHD`/`KXETHY`/`KXETHMAXY`/`KXETHMINY`).
+One thing found in the process: `KXGOLDW` looks like a range series by name
+but is actually another ladder (all "greater"-type strikes, not
+mutually-exclusive buckets) -- using it as a range source would have
+silently misread cumulative ladder probabilities as disjoint bucket
+probabilities, so it's deliberately not used.
+**Smart money, analyst, options, retail attention (built, live):** SEC 13F
+consensus, analyst price targets, options-implied distributions, and
+Wikipedia retail attention -- covering individual stocks (no prediction
+market covers those) and, for BTC/oil/ETH/gold, cross-checked directly
+against the prediction-market consensus. See `src/sec_13f_wisdom.py`,
+`src/analyst_price_target_backtest.py`, `src/options_implied_distribution.py`,
+`src/wikipedia_attention.py`, and `src/combined_signals_service.py` in the
+repo root (not this folder) for the underlying research; this dashboard's
+`backend/app.py` and `src/combined_signals_service.py` wrap those for live
+serving.
+**Not wired up:** futures/perpetual curves (`backend/adapters/perp_futures.py`
+is a stub -- the adapter interface supports it, the fetch logic doesn't
+exist).
+
+## The four pages
+
+- **Prediction Markets** -- the original dashboard: per-date forecasts, fan
+  chart, touch probabilities, for whichever asset is selected.
+- **Smart Money** -- the SEC 13F portfolio and backtests (static; rebuilt by
+  running `scripts/run_expanded_wisdom_portfolio.py` and the backtest
+  scripts in the repo root, not on every page load -- the S&P 500 sweep
+  alone takes about an hour).
+- **Stock Lookup** -- live four-signal read on any ticker, computed fresh
+  per request (a few seconds, not pre-baked).
+- **Three Crowds** -- prediction markets vs. options markets vs. retail
+  attention for BTC/oil/ETH/gold, computed live per request.
 
 ### Adding crude oil: what changed, and what oil currently lacks
 

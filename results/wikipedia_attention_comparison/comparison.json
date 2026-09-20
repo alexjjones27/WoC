@@ -1,0 +1,451 @@
+{
+  "smart_money": [
+    {
+      "ticker": "AAPL",
+      "name": "APPLE INC",
+      "smart_money_weight": 0.18809298714165434,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 10990.785714285714,
+        "baseline_avg_daily_views": 6284.1973684210525,
+        "attention_ratio": 1.7489561625667438,
+        "total_recent_views": 153871,
+        "resolved_title": "Apple Inc."
+      }
+    },
+    {
+      "ticker": "AXP",
+      "name": "AMERICAN EXPRESS CO",
+      "smart_money_weight": 0.14592027823351592,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 1216.7142857142858,
+        "baseline_avg_daily_views": 1252.0263157894738,
+        "attention_ratio": 0.9717960959527262,
+        "total_recent_views": 17034,
+        "resolved_title": "American Express"
+      }
+    },
+    {
+      "ticker": "KO",
+      "name": "COCA COLA CO",
+      "smart_money_weight": 0.0925340924203534,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 1455.0,
+        "baseline_avg_daily_views": 1605.8552631578948,
+        "attention_ratio": 0.9060592404440985,
+        "total_recent_views": 20370,
+        "resolved_title": "The Coca-Cola Company"
+      }
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "ALPHABET INC",
+      "smart_money_weight": 0.09178787195733135,
+      "n_funds": 5,
+      "attention": {
+        "recent_avg_daily_views": 2924.0714285714284,
+        "baseline_avg_daily_views": 2964.4736842105262,
+        "attention_ratio": 0.986371187622852,
+        "total_recent_views": 40937,
+        "resolved_title": "Alphabet Inc."
+      }
+    },
+    {
+      "ticker": "BAC",
+      "name": "BANK OF AMER CORP",
+      "smart_money_weight": 0.07837394446075985,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 0.9285714285714286,
+        "baseline_avg_daily_views": 1.2236842105263157,
+        "attention_ratio": 0.7588325652841783,
+        "total_recent_views": 13,
+        "resolved_title": "Bank of America Corp. v. Miami"
+      }
+    },
+    {
+      "ticker": "CVX",
+      "name": "CHEVRON CORPORATION",
+      "smart_money_weight": 0.03979659549050752,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 905.8571428571429,
+        "baseline_avg_daily_views": 933.8684210526316,
+        "attention_ratio": 0.9700051125361803,
+        "total_recent_views": 12682,
+        "resolved_title": "Chevron Corporation"
+      }
+    },
+    {
+      "ticker": "OXY",
+      "name": "OCCIDENTAL PETE CORP",
+      "smart_money_weight": 0.03661558456934055,
+      "n_funds": 1,
+      "attention": null
+    },
+    {
+      "ticker": null,
+      "name": "CHUBB LIMITED",
+      "smart_money_weight": 0.03359438078767219,
+      "n_funds": 3,
+      "attention": {
+        "recent_avg_daily_views": 346.42857142857144,
+        "baseline_avg_daily_views": 283.7236842105263,
+        "attention_ratio": 1.2210068834842753,
+        "total_recent_views": 4850,
+        "resolved_title": "Chubb Limited"
+      }
+    },
+    {
+      "ticker": "MCO",
+      "name": "MOODYS CORP",
+      "smart_money_weight": 0.0317932357857109,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 150.42857142857142,
+        "baseline_avg_daily_views": 158.07894736842104,
+        "attention_ratio": 0.9516040809531737,
+        "total_recent_views": 2106,
+        "resolved_title": "Moody's Corporation"
+      }
+    },
+    {
+      "ticker": "GOOG",
+      "name": "ALPHABET INC",
+      "smart_money_weight": 0.02824787593565755,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 2924.0714285714284,
+        "baseline_avg_daily_views": 2964.4736842105262,
+        "attention_ratio": 0.986371187622852,
+        "total_recent_views": 40937,
+        "resolved_title": "Alphabet Inc."
+      }
+    },
+    {
+      "ticker": "AMZN",
+      "name": "AMAZON COM INC",
+      "smart_money_weight": 0.02549861481504063,
+      "n_funds": 6,
+      "attention": {
+        "recent_avg_daily_views": 7711.214285714285,
+        "baseline_avg_daily_views": 7137.973684210527,
+        "attention_ratio": 1.0803085899254279,
+        "total_recent_views": 107957,
+        "resolved_title": "Amazon (company)"
+      }
+    },
+    {
+      "ticker": "TSM",
+      "name": "TAIWAN SEMICONDUCTOR MANUFAC",
+      "smart_money_weight": 0.023899517807374003,
+      "n_funds": 5,
+      "attention": {
+        "recent_avg_daily_views": 1535.4285714285713,
+        "baseline_avg_daily_views": 1483.907894736842,
+        "attention_ratio": 1.0347195920140757,
+        "total_recent_views": 21496,
+        "resolved_title": "TSMC"
+      }
+    },
+    {
+      "ticker": "KHC",
+      "name": "KRAFT HEINZ CO",
+      "smart_money_weight": 0.021885613187791024,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 1596.642857142857,
+        "baseline_avg_daily_views": 784.7236842105264,
+        "attention_ratio": 2.034656133450546,
+        "total_recent_views": 22353,
+        "resolved_title": "Kraft Heinz"
+      }
+    },
+    {
+      "ticker": "DVA",
+      "name": "DAVITA INC",
+      "smart_money_weight": 0.018282656451116916,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 83.21428571428571,
+        "baseline_avg_daily_views": 99.07894736842105,
+        "attention_ratio": 0.8398785809144375,
+        "total_recent_views": 1165,
+        "resolved_title": "DaVita"
+      }
+    },
+    {
+      "ticker": "META",
+      "name": "META PLATFORMS INC",
+      "smart_money_weight": 0.016724740013994644,
+      "n_funds": 5,
+      "attention": {
+        "recent_avg_daily_views": 3210.6428571428573,
+        "baseline_avg_daily_views": 4206.828947368421,
+        "attention_ratio": 0.7631978616937285,
+        "total_recent_views": 44949,
+        "resolved_title": "Meta Platforms"
+      }
+    },
+    {
+      "ticker": "LRCX",
+      "name": "LAM RESEARCH CORP",
+      "smart_money_weight": 0.015542217209495755,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 284.5,
+        "baseline_avg_daily_views": 313.0394736842105,
+        "attention_ratio": 0.9088310705729057,
+        "total_recent_views": 3983,
+        "resolved_title": "Lam Research"
+      }
+    },
+    {
+      "ticker": "DAL",
+      "name": "DELTA AIR LINES INC",
+      "smart_money_weight": 0.015275953441674857,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 2439.9285714285716,
+        "baseline_avg_daily_views": 2606.9210526315787,
+        "attention_ratio": 0.9359426396766273,
+        "total_recent_views": 34159,
+        "resolved_title": "Delta Air Lines"
+      }
+    },
+    {
+      "ticker": "MSFT",
+      "name": "MICROSOFT CORP",
+      "smart_money_weight": 0.015041669854848302,
+      "n_funds": 6,
+      "attention": {
+        "recent_avg_daily_views": 7778.571428571428,
+        "baseline_avg_daily_views": 5889.618421052632,
+        "attention_ratio": 1.3207258726247313,
+        "total_recent_views": 108900,
+        "resolved_title": "Microsoft"
+      }
+    },
+    {
+      "ticker": "AMAT",
+      "name": "APPLIED MATLS INC",
+      "smart_money_weight": 0.014510642711893106,
+      "n_funds": 3,
+      "attention": {
+        "recent_avg_daily_views": 359.5,
+        "baseline_avg_daily_views": 372.1578947368421,
+        "attention_ratio": 0.9659878376467261,
+        "total_recent_views": 5033,
+        "resolved_title": "Applied Materials"
+      }
+    },
+    {
+      "ticker": "IEP",
+      "name": "Icahn Enterprises LP",
+      "smart_money_weight": 0.012686682211179433,
+      "n_funds": 1,
+      "attention": {
+        "recent_avg_daily_views": 92.07142857142857,
+        "baseline_avg_daily_views": 114.28947368421052,
+        "attention_ratio": 0.8055985000493405,
+        "total_recent_views": 1289,
+        "resolved_title": "Icahn Enterprises"
+      }
+    },
+    {
+      "ticker": "TFPM",
+      "name": "TRIPLE FLAG PRECIOUS METAL",
+      "smart_money_weight": 0.011362512163512804,
+      "n_funds": 1,
+      "attention": null
+    },
+    {
+      "ticker": "GEV",
+      "name": "GE VERNOVA INC",
+      "smart_money_weight": 0.011217962942547906,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 669.8571428571429,
+        "baseline_avg_daily_views": 735.5526315789474,
+        "attention_ratio": 0.9106855364234349,
+        "total_recent_views": 9378,
+        "resolved_title": "GE Vernova"
+      }
+    },
+    {
+      "ticker": "SIRI",
+      "name": "SIRIUSXM HOLDINGS INC",
+      "smart_money_weight": 0.01049053973807406,
+      "n_funds": 1,
+      "attention": null
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA CORPORATION",
+      "smart_money_weight": 0.010429554868426366,
+      "n_funds": 3,
+      "attention": {
+        "recent_avg_daily_views": 5177.428571428572,
+        "baseline_avg_daily_views": 5149.328947368421,
+        "attention_ratio": 1.0054569487300886,
+        "total_recent_views": 72484,
+        "resolved_title": "Nvidia"
+      }
+    },
+    {
+      "ticker": "MU",
+      "name": "MICRON TECHNOLOGY INC",
+      "smart_money_weight": 0.010394275800526643,
+      "n_funds": 2,
+      "attention": {
+        "recent_avg_daily_views": 1121.357142857143,
+        "baseline_avg_daily_views": 1963.5263157894738,
+        "attention_ratio": 0.5710935136646129,
+        "total_recent_views": 15699,
+        "resolved_title": "Micron Technology"
+      }
+    }
+  ],
+  "retail_favorites": [
+    {
+      "ticker": "GME",
+      "name": "GameStop",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 545.2857142857143,
+        "baseline_avg_daily_views": 583.8552631578947,
+        "attention_ratio": 0.9339398797853266,
+        "total_recent_views": 7634,
+        "resolved_title": "GameStop"
+      }
+    },
+    {
+      "ticker": "AMC",
+      "name": "AMC Entertainment",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 515.7142857142857,
+        "baseline_avg_daily_views": 679.3026315789474,
+        "attention_ratio": 0.7591819341485213,
+        "total_recent_views": 7220,
+        "resolved_title": "AMC Theatres"
+      }
+    },
+    {
+      "ticker": "PLTR",
+      "name": "Palantir Technologies",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 3546.6428571428573,
+        "baseline_avg_daily_views": 4194.605263157895,
+        "attention_ratio": 0.8455248192943855,
+        "total_recent_views": 49653,
+        "resolved_title": "Palantir"
+      }
+    },
+    {
+      "ticker": "RIVN",
+      "name": "Rivian",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 1604.0714285714287,
+        "baseline_avg_daily_views": 1652.157894736842,
+        "attention_ratio": 0.9708947514528733,
+        "total_recent_views": 22457,
+        "resolved_title": "Rivian"
+      }
+    },
+    {
+      "ticker": "LCID",
+      "name": "Lucid Motors",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 1005.7857142857143,
+        "baseline_avg_daily_views": 1174.9473684210527,
+        "attention_ratio": 0.8560261857833977,
+        "total_recent_views": 14081,
+        "resolved_title": "Lucid Motors"
+      }
+    },
+    {
+      "ticker": "HOOD",
+      "name": "Robinhood Markets",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 531.9285714285714,
+        "baseline_avg_daily_views": 595.2894736842105,
+        "attention_ratio": 0.8935628714153094,
+        "total_recent_views": 7447,
+        "resolved_title": "Robinhood Markets"
+      }
+    },
+    {
+      "ticker": "COIN",
+      "name": "Coinbase",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 533.6428571428571,
+        "baseline_avg_daily_views": 494.5921052631579,
+        "attention_ratio": 1.078955469495255,
+        "total_recent_views": 7471,
+        "resolved_title": "Coinbase"
+      }
+    },
+    {
+      "ticker": "MARA",
+      "name": "MARA Holdings",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 40.642857142857146,
+        "baseline_avg_daily_views": 41.973684210526315,
+        "attention_ratio": 0.968293775190327,
+        "total_recent_views": 569,
+        "resolved_title": "MARA Holdings"
+      }
+    },
+    {
+      "ticker": "RIOT",
+      "name": "Riot Platforms",
+      "in_smart_money_panel": false,
+      "attention": null
+    },
+    {
+      "ticker": "SOFI",
+      "name": "SoFi Technologies",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 522.2142857142857,
+        "baseline_avg_daily_views": 629.5394736842105,
+        "attention_ratio": 0.8295179373870981,
+        "total_recent_views": 7311,
+        "resolved_title": "SoFi"
+      }
+    },
+    {
+      "ticker": "TSLA",
+      "name": "Tesla, Inc.",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 2854.6428571428573,
+        "baseline_avg_daily_views": 2922.934210526316,
+        "attention_ratio": 0.9766360278867988,
+        "total_recent_views": 39965,
+        "resolved_title": "Tesla, Inc."
+      }
+    },
+    {
+      "ticker": "NIO",
+      "name": "Nio Inc.",
+      "in_smart_money_panel": false,
+      "attention": {
+        "recent_avg_daily_views": 217.85714285714286,
+        "baseline_avg_daily_views": 245.39473684210526,
+        "attention_ratio": 0.8877824588280353,
+        "total_recent_views": 3050,
+        "resolved_title": "Nio Inc."
+      }
+    }
+  ]
+}

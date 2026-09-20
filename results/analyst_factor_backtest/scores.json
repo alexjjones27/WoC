@@ -1,0 +1,42 @@
+{
+  "implied_return": {
+    "n_periods": 53,
+    "mean_n_per_period": 418.75471698113205,
+    "mean_ic": 0.013282369837131684,
+    "ic_tstat": 0.5792023146819086,
+    "pct_periods_ic_positive": 0.4339622641509434,
+    "mean_quintile_spread": 0.005139172024010211,
+    "spread_win_rate": 0.4339622641509434,
+    "mean_universe_return": 0.039432718444972245
+  },
+  "revision": {
+    "n_periods": 53,
+    "mean_n_per_period": 371.92452830188677,
+    "mean_ic": 0.023975922143040094,
+    "ic_tstat": 1.6401995737597543,
+    "pct_periods_ic_positive": 0.660377358490566,
+    "mean_quintile_spread": 0.014343946063826113,
+    "spread_win_rate": 0.660377358490566,
+    "mean_universe_return": 0.039437860870245145
+  },
+  "combined": {
+    "n_periods": 53,
+    "mean_n_per_period": 371.92452830188677,
+    "mean_ic": 0.019039712038697063,
+    "ic_tstat": 0.8630300718461821,
+    "pct_periods_ic_positive": 0.5471698113207547,
+    "mean_quintile_spread": 0.01226506336153747,
+    "spread_win_rate": 0.6037735849056604,
+    "mean_universe_return": 0.039437860870245145
+  },
+  "upside_lowdisp": {
+    "n_periods": 53,
+    "mean_n_per_period": 418.75471698113205,
+    "mean_ic": -0.030163974433759476,
+    "ic_tstat": -2.196119193404029,
+    "pct_periods_ic_positive": 0.39622641509433965,
+    "mean_quintile_spread": -0.019555561695537512,
+    "spread_win_rate": 0.3584905660377358,
+    "mean_universe_return": 0.039432718444972245
+  }
+}

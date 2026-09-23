@@ -82,6 +82,17 @@ export default function StockLookupPage() {
               <div className="stat-value">{result.retail_attention ? `${result.retail_attention.attention_ratio.toFixed(2)}×` : "n/a"}</div>
               {result.retail_attention && <div className="stat-sub">vs. 90-day baseline</div>}
             </div>
+            <div className="stat-tile">
+              <div className="stat-label">StockTwits bullish</div>
+              <div className="stat-value">
+                {result.stocktwits && !result.stocktwits.error && result.stocktwits.bullish_share !== null
+                  ? formatPct(result.stocktwits.bullish_share, 0)
+                  : "n/a"}
+              </div>
+              {result.stocktwits && !result.stocktwits.error && (
+                <div className="stat-sub">{result.stocktwits.bullish} bull / {result.stocktwits.bearish} bear tags</div>
+              )}
+            </div>
           </div>
         </div>
       )}

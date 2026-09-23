@@ -6,7 +6,17 @@ CoinGecko's public market_chart endpoint needs no auth (confirmed live,
 """
 from __future__ import annotations
 
-from adapters.http import get_json
+from adapters.http import get_json, post_json
+
+HYPERLIQUID_INFO = "https://api.hyperliquid.xyz/info"
+
+# Hyperliquid mid price per asset: (dex, coin). The empty dex is its main
+# crypto perp venue; "xyz" is the HIP-3 venue that lists commodity perps.
+# Confirmed live 2026-09-23: xyz:CL tracks the front WTI contract and
+# xyz:GOLD tracks spot gold to within a few dollars. Used wherever a module
+# needs "roughly where is the price right now" (e.g. deciding whether a
+# bare "55,000" touch strike is a dip or a reach), never as a forecast.
+HYPERLIQUID_SPOT = {"BTC": ("", "BTC"), "ETH": ("", "ETH"), "GOLD": ("xyz", "xyz:GOLD"), "OIL": ("xyz", "xyz:CL")}
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
@@ -35,3 +45,17 @@ def fetch_recent_history(asset: str, days: int = 30) -> list[dict]:
     for ts_ms, price in data.get("prices", []):
         points.append({"t_ms": int(ts_ms), "price": float(price)})
     return points
+
+
+def fetch_spot(asset: str) -> float | None:
+    """Current mid price from Hyperliquid, or None (never raises)."""
+    spec = HYPERLIQUID_SPOT.get(asset.upper())
+    if spec is None:
+        return None
+    dex, coin = spec
+    try:
+        body = {"type": "allMids", "dex": dex} if dex else {"type": "allMids"}
+        mids = post_json(HYPERLIQUID_INFO, body)
+        return float(mids[coin])
+    except Exception:  # noqa: BLE001
+        return None

@@ -15,8 +15,24 @@ USER_AGENT = "Mozilla/5.0 (wisdom-of-the-markets dashboard; local research tool)
 
 def get_json(url: str, params: dict | None = None, retries: int = 3, timeout: float = 12.0) -> object:
     if params:
-        url = f"{url}?{urllib.parse.urlencode(params)}"
+        url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    return _send(req, url, retries, timeout)
+
+
+def post_json(url: str, body: dict, retries: int = 3, timeout: float = 12.0) -> object:
+    """JSON-RPC-style POST (Hyperliquid's /info and Derive's public API take
+    their query as a JSON body rather than URL params)."""
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode(),
+        headers={"User-Agent": USER_AGENT, "Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    return _send(req, url, retries, timeout)
+
+
+def _send(req: urllib.request.Request, url: str, retries: int, timeout: float) -> object:
     last_err: Exception | None = None
     for attempt in range(retries):
         try:
@@ -32,4 +48,4 @@ def get_json(url: str, params: dict | None = None, retries: int = 3, timeout: fl
             last_err = exc
             if attempt < retries - 1:
                 time.sleep(min(2 ** attempt, 8))
-    raise RuntimeError(f"GET {url} failed after {retries} retries: {last_err}")
+    raise RuntimeError(f"{req.get_method()} {url} failed after {retries} retries: {last_err}")

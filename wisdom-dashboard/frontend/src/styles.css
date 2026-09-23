@@ -17,6 +17,8 @@
   --serious: #ec835a;
   --pm-color: #3987e5;
   --options-color: #ec835a;
+  --futures-color: #2fb5a5;
+  --expert-color: #b18cf2;
   color-scheme: dark;
 }
 
@@ -751,4 +753,116 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   margin: 0 0 6px;
+}
+
+/* ---- Crowds page ---- */
+.crowds .chart-card {
+  margin-bottom: 14px;
+}
+.crowd-table td {
+  vertical-align: top;
+}
+.crowd-table .legend-swatch {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.crowd-what {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: normal;
+}
+.muted {
+  color: var(--text-muted);
+}
+.crowd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  grid-auto-flow: row dense;
+  align-items: start;
+  gap: 16px;
+  margin-top: 20px;
+  margin-bottom: 16px;
+}
+.crowd-card {
+  gap: 12px;
+  min-width: 0;
+}
+.crowd-card .card-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.crowd-card .stat-strip {
+  margin-bottom: 0;
+  grid-template-columns: repeat(2, 1fr);
+}
+.crowd-wide {
+  grid-column: 1 / -1;
+}
+.crowd-empty {
+  order: 1;
+}
+.crowd-card .data-table td,
+.crowd-card .data-table th {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.crowd-sub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.crowd-sub a {
+  color: var(--accent);
+}
+.cot-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.cot-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.cot-name {
+  font-weight: 600;
+}
+.pct-bar-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(236, 131, 90, 0.35), var(--gridline) 50%, rgba(12, 163, 12, 0.35));
+}
+.pct-bar-mid {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--baseline);
+}
+.pct-bar-marker {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 14px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--text-primary);
+}
+.pct-bar-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.crowds .sm-section {
+  margin-top: 8px;
 }

@@ -11,8 +11,7 @@ const SOURCE_COLORS: Record<string, string> = {
   polymarket: "#d95926", // slot 2 orange (dark-surface step)
   kalshi: "#199e70", // slot 3 aqua
   manifold: "#c98500", // slot 4 yellow
-  deribit_options: "#9085e9", // slot 7 violet
-  perp_futures: "#d55181", // slot 5 magenta
+  futuur: "#d55181", // slot 5 magenta
 };
 const FALLBACK_COLOR = "#9085e9"; // slot 7 violet
 

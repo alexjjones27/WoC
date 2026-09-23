@@ -2,15 +2,15 @@ import { useState } from "react";
 import PredictionMarketsPage from "./pages/PredictionMarketsPage";
 import SmartMoneyPage from "./pages/SmartMoneyPage";
 import StockLookupPage from "./pages/StockLookupPage";
-import ThreeCrowdsPage from "./pages/ThreeCrowdsPage";
+import CrowdsPage from "./pages/CrowdsPage";
 
-type Tab = "markets" | "smart-money" | "lookup" | "three-crowds";
+type Tab = "markets" | "smart-money" | "lookup" | "crowds";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "markets", label: "Prediction Markets" },
   { id: "smart-money", label: "Smart Money" },
   { id: "lookup", label: "Stock Lookup" },
-  { id: "three-crowds", label: "Three Crowds" },
+  { id: "crowds", label: "Crowds" },
 ];
 
 export default function App() {
@@ -35,7 +35,7 @@ export default function App() {
       {tab === "markets" && <PredictionMarketsPage />}
       {tab === "smart-money" && <SmartMoneyPage />}
       {tab === "lookup" && <StockLookupPage />}
-      {tab === "three-crowds" && <ThreeCrowdsPage />}
+      {tab === "crowds" && <CrowdsPage />}
     </div>
   );
 }

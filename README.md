@@ -13,7 +13,7 @@ pages. Run it with `wisdom-dashboard/run.sh`.
 
 - **Prediction Markets** — the original piece: live BTC, crude oil (WTI),
   Ethereum, and gold price-threshold/range markets from Polymarket, Kalshi,
-  and Manifold, combined into one volume-weighted probabilistic forecast per
+  Manifold, Futuur and Limitless, combined into one volume-weighted probabilistic forecast per
   date, shown as a dashboard with confidence bands, a probability-history
   "fan chart," and a separate touch-probability section for longer horizons.
 - **Smart Money** — SEC 13F consensus from active hedge funds, expanded into
@@ -22,10 +22,11 @@ pages. Run it with `wisdom-dashboard/run.sh`.
 - **Stock Lookup** — live four-signal read on any ticker: smart money
   weight, analyst consensus, options-market confirmation, retail attention,
   computed fresh in a few seconds.
-- **Three Crowds** — prediction markets vs. options markets vs. retail
-  attention, for BTC, oil, ETH, and gold — the two data sources that only
-  exist for assets without individual-stock coverage, compared against the
-  two that exist everywhere.
+- **Crowds** — every independent crowd for BTC, ETH, gold and oil side by
+  side: prediction markets (now including Futuur and Limitless), options
+  (Deribit, OKX, Derive), futures and perps (Deribit, OKX, Hyperliquid), the
+  EIA's oil forecast, CFTC positioning, and retail sentiment (StockTwits,
+  Fear & Greed, MVRV, Wikipedia). All free, no keys.
 
 See the dashboard's own README for the aggregation math, calibration
 corrections, the trading-concentration correction, and how to add a new

@@ -46,12 +46,13 @@ file.
     a platform with 10x the volume contributes 10x the probability mass to
     the combined curve, not just 10x the influence on a single number.
     `weight_s` is source.weight (see each adapter's docstring for how that
-    source computes it -- for Phase 1 both are USD-ish volume; a future
-    options/futures adapter's weight is a different liquidity unit and
-    RECONCILING units across source *types* fairly is flagged here as an
-    open design question, not silently assumed solved -- today's dashboard
-    only ever mixes weights within one source_type (prediction markets), so
-    this doesn't yet bite).
+    source computes it). Weights are only ever mixed WITHIN one
+    source_type: build_dashboard() aggregates prediction markets (USD-ish
+    volume) and options venues (USD open interest) as separate crowds,
+    never together. The two units aren't comparable -- Deribit's BTC
+    open interest alone is thousands of times Polymarket's volume, so a
+    joint mixture would simply be the options curve -- and keeping them
+    apart is what lets the Crowds page compare them as independent views.
 
 5.  STATS FROM THE AGGREGATE PDF: mean/variance/std analytically from the
     grid; median and confidence intervals (68%/95%, plus every level in
@@ -398,10 +399,13 @@ def _confidence_tier(total_volume: float) -> str:
     return "low"
 
 
-def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast | None:
+def aggregate_group(distributions: list[PriceDistribution], apply_corrections: bool = True) -> AggregateForecast | None:
     """Combine every source's distribution for ONE target date into one
     AggregateForecast. Returns None if there's nothing usable (e.g. every
-    bucket resampled to zero mass)."""
+    bucket resampled to zero mass). `apply_corrections=False` skips step 8's
+    calibration corrections -- they were measured on Polymarket, so they're
+    only applied to prediction-market groups."""
+    corrections = APPLY_CALIBRATION_CORRECTIONS and apply_corrections
     if not distributions:
         return None
     grid_edges, tail_scale = _build_group_grid(distributions)
@@ -411,7 +415,7 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
 
     ref = distributions[0]
     lead_hours = _lead_hours(ref.resolve_datetime_utc, ref.target_date)
-    shrink = _log_interp(SHRINK_BY_LEAD_HOURS, lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
+    shrink = _log_interp(SHRINK_BY_LEAD_HOURS, lead_hours) if corrections else 1.0
 
     weighted_pdf_sum = np.zeros(len(centers))
     total_eff_weight = 0.0
@@ -487,7 +491,7 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     # coverage; the same value is applied to every other level here (95%,
     # and CONFIDENCE_LEVELS below) for lack of a level-specific measurement
     # -- see module docstring step 8.
-    ci_mult = _log_interp(CI_WIDTH_MULT_BY_LEAD_HOURS, lead_hours) if APPLY_CALIBRATION_CORRECTIONS else 1.0
+    ci_mult = _log_interp(CI_WIDTH_MULT_BY_LEAD_HOURS, lead_hours) if corrections else 1.0
 
     def _band(level: float) -> tuple[float, float]:
         half = level / 2.0
@@ -550,14 +554,21 @@ def aggregate_group(distributions: list[PriceDistribution]) -> AggregateForecast
     )
 
 
-def build_dashboard(results: list[SourceFetchResult]) -> tuple[list[AggregateForecast], list[dict]]:
-    """Top-level entry point: pool every source's distributions, group by
-    target date, aggregate each group. Returns (forecasts sorted by date,
-    per-source errors so the UI can show "Kalshi: discovery failed" etc.
-    without losing whatever other sources DID return)."""
+def build_dashboard(
+    results: list[SourceFetchResult],
+    source_type: str = "prediction_market",
+) -> tuple[list[AggregateForecast], list[dict]]:
+    """Top-level entry point: pool every source's distributions OF ONE
+    source_type, group by target date, aggregate each group. Returns
+    (forecasts sorted by date, per-source errors so the UI can show
+    "Kalshi: discovery failed" etc. without losing whatever other sources
+    DID return). Called once per crowd -- see step 4 in the module
+    docstring for why crowds are never mixed."""
     groups: dict[date, list[PriceDistribution]] = defaultdict(list)
     source_errors: list[dict] = []
     for r in results:
+        if r.source_type != source_type:
+            continue
         if r.error:
             source_errors.append({"source": r.source_name, "source_type": r.source_type, "error": r.error})
         for d in r.distributions:
@@ -565,7 +576,7 @@ def build_dashboard(results: list[SourceFetchResult]) -> tuple[list[AggregateFor
 
     forecasts = []
     for target_date in sorted(groups):
-        forecast = aggregate_group(groups[target_date])
+        forecast = aggregate_group(groups[target_date], apply_corrections=source_type == "prediction_market")
         if forecast is not None:
             forecasts.append(forecast)
     return forecasts, source_errors
@@ -639,8 +650,8 @@ def build_touch_groups(results: list[TouchFetchResult]) -> tuple[list[TouchGroup
 # vols -- this preserves that term structure rather than flattening it).
 #
 # This is explicitly a baseline model, not a claim BTC or oil literally
-# follows GBM -- see adapters/perp_futures.py's docstring for the same
-# caveat made about GBM as a forecasting tool. Every interpolated point is
+# follows GBM -- see signals/futures.py for why a futures forward is
+# not a pure forecast either. Every interpolated point is
 # tagged is_interpolated=True end to end (aggregation -> orchestrator ->
 # API -> frontend) specifically so it's never visually confusable with a
 # real market-implied forecast -- see FanChart.tsx for how it's drawn

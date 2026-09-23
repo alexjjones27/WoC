@@ -188,34 +188,112 @@ export interface TickerLookupPayload {
   analyst: { spot: number; consensus_target: number; n_firms: number; implied_return: number } | null;
   options: { implied_vol: number | null; p_exceed_analyst_target: number | null } | null;
   retail_attention: { attention_ratio: number; resolved_title: string } | null;
+  stocktwits?: StockTwitsReading | null;
 }
 
-export type ThreeCrowdsAsset = "BTC" | "OIL" | "ETH" | "GOLD";
+export type CrowdAsset = "BTC" | "ETH" | "GOLD" | "OIL";
 
-export interface ThreeCrowdsPayload {
-  asset: ThreeCrowdsAsset;
+export interface CrowdForecastPoint {
+  target_date: string;
+  period_label: string;
+  lead_hours: number;
+  mean: number;
+  median: number;
+  ci_68: [number, number];
+  ci_95: [number, number];
+  total_volume: number;
+}
+
+export interface OptionsForecastPoint extends CrowdForecastPoint {
+  total_open_interest: number;
+  disagreement_pct: number;
+  sources: { source_name: string; mean: number; median: number | null; open_interest: number | null; source_url: string | null }[];
+}
+
+export interface FuturesCurvePoint {
+  expiry: string;
+  t_years: number;
+  price: number;
+  open_interest_usd: number;
+  venues: string[];
+  annualized_basis: number | null;
+}
+
+export interface PerpReading {
+  venue: string;
+  instrument: string;
+  price: number;
+  funding_annualized: number;
+  open_interest_usd: number;
+}
+
+export interface EiaPoint {
+  period: string;
+  date: string;
+  price: number;
+  is_forecast: boolean;
+}
+
+export interface CotGroup {
+  group: string;
+  long_contracts: number;
+  short_contracts: number;
+  net_contracts: number;
+  net_pct_open_interest: number;
+  weekly_change_contracts: number | null;
+  percentile_3y: number;
+  history: { date: string; net_pct_oi: number }[];
+}
+
+export interface HorizonCrowdView {
+  median: number;
+  ci_68: [number, number] | null;
+  date: string;
+  change_vs_spot?: number;
+}
+
+export type CrowdKey = "prediction_markets" | "options" | "futures" | "experts";
+
+export interface CrowdsPayload {
+  asset: CrowdAsset;
   error?: string;
-  real_spot: number;
-  prediction_market: {
-    target_date: string;
-    lead_hours: number;
-    horizon_mismatch_hours: number;
-    is_interpolated: boolean;
-    mean: number;
-    median: number;
-    ci_68: [number, number] | null;
-    ci_95: [number, number] | null;
+  display_name: string;
+  generated_at_utc: string;
+  spot: number | null;
+  spot_source: string;
+  prediction_markets: {
+    forecasts: (CrowdForecastPoint & { confidence_tier: string; sources: string[] })[];
+    sources_queried: string[];
+    source_errors: SourceError[];
   };
-  pm_implied_return: number | null;
-  options: {
-    proxy_ticker: string;
-    proxy_note: string;
-    t_years: number;
-    mean_return: number;
-    median_return: number;
-    p10_return: number;
-    p90_return: number;
+  options: { forecasts: OptionsForecastPoint[]; source_errors: SourceError[]; sources_queried: string[] };
+  futures: {
+    curve: FuturesCurvePoint[];
+    perps: PerpReading[];
+    funding_annualized_oi_weighted: number | null;
+    errors: string[];
   };
-  retail_attention: { attention_ratio: number; resolved_title: string } | null;
-  cross_check_p_options_exceed_pm_median: number | null;
+  experts: { error?: string; source: string; source_url: string; note: string; series: Record<string, EiaPoint[]> } | null;
+  positioning: { error?: string; contract: string; report_date: string; open_interest: number; groups: CotGroup[]; source_url: string };
+  sentiment: {
+    stocktwits: StockTwitsReading | null;
+    fear_greed: { error?: string; value: number; classification: string; avg_30d: number | null; source_url: string } | null;
+    mvrv: { error?: string; value: number; as_of: string; percentile_history: number; history_days: number; source_url: string } | null;
+    wikipedia: { error?: string; attention_ratio: number; resolved_title: string } | null;
+  };
+  horizon_views: { horizon_days: number; date: string; crowds: Partial<Record<CrowdKey, HorizonCrowdView>> }[];
+}
+
+export interface StockTwitsReading {
+  error?: string;
+  symbol: string;
+  watchers: number | null;
+  posts_read: number;
+  bullish: number;
+  bearish: number;
+  untagged: number;
+  bullish_share: number | null;
+  oldest_post: string | null;
+  newest_post: string | null;
+  source_url: string;
 }

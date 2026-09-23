@@ -48,7 +48,7 @@ export default function PredictionMarketsPage() {
       <div className="page-toolbar">
         <div>
           <h2 className="page-title">Prediction markets</h2>
-          <span className="subtitle">Cross-platform BTC/oil price forecasts, volume-weighted across Polymarket, Kalshi, and Manifold</span>
+          <span className="subtitle">Cross-platform price forecasts, volume-weighted across Polymarket, Kalshi, Manifold and Futuur</span>
         </div>
         <AssetSelector assets={assets} selected={symbol} onSelect={setSymbol} />
         <div className="topbar-right">

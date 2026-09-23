@@ -16,7 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from common.assets import ASSET_REGISTRY
+from crowds import CROWD_ASSETS, build_crowds_payload
 from orchestrator import get_dashboard_payload
+from signals.sentiment import fetch_stocktwits
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -26,7 +28,6 @@ from combined_signals_service import (  # noqa: E402
     load_smart_money_backtest,
     load_smart_money_portfolio,
     lookup_ticker,
-    three_crowds,
 )
 
 app = FastAPI(title="Wisdom of the Markets")
@@ -84,29 +85,30 @@ def smart_money_backtest():
 
 @app.get("/api/lookup/{ticker}")
 def stock_lookup(ticker: str):
-    """Live four-signal lookup for any ticker -- smart money weight from
-    the cached N=50 13F panel, plus a live fetch of analyst consensus,
-    options-implied distribution, and Wikipedia retail attention. Unlike
-    the S&P 500 portfolio above, this computes fresh per request (a single
-    ticker is fast enough: a few seconds, not tens of minutes)."""
+    """Live lookup for any ticker -- smart money weight from the cached
+    N=50 13F panel, plus a live fetch of analyst consensus,
+    options-implied distribution, Wikipedia retail attention and StockTwits
+    bullish/bearish tags. Unlike the S&P 500 portfolio above, this computes
+    fresh per request (a single ticker is fast enough: a few seconds, not
+    tens of minutes)."""
     try:
-        return lookup_ticker(ticker.upper())
+        result = lookup_ticker(ticker.upper())
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+    result["stocktwits"] = fetch_stocktwits(ticker.upper())
+    return result
 
 
-@app.get("/api/three-crowds/{asset}")
-def three_crowds_view(asset: str):
-    """Live BTC/oil comparison: prediction-market consensus (reuses
-    get_dashboard_payload below), options-implied distribution (via IBIT/
-    USO), and retail attention -- computed fresh per request."""
+@app.get("/api/crowds/{asset}")
+def crowds_view(asset: str):
+    """Every independent crowd for BTC/ETH/GOLD/OIL side by side:
+    prediction markets, options, futures & perps, the EIA's forecast (oil),
+    CFTC positioning and retail sentiment -- see crowds.py. Live, cached
+    for a minute."""
     asset = asset.upper()
-    if asset not in ("BTC", "OIL", "ETH", "GOLD"):
-        raise HTTPException(status_code=404, detail="asset must be one of BTC, OIL, ETH, GOLD")
-    try:
-        return three_crowds(asset)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    if asset not in CROWD_ASSETS:
+        raise HTTPException(status_code=404, detail=f"asset must be one of {', '.join(CROWD_ASSETS)}")
+    return build_crowds_payload(asset)
 
 
 # Serve the built frontend (frontend/npm run build -> frontend/dist), if

@@ -26,9 +26,11 @@ against the prediction-market consensus. See `src/sec_13f_wisdom.py`,
 repo root (not this folder) for the underlying research; this dashboard's
 `backend/app.py` and `src/combined_signals_service.py` wrap those for live
 serving.
-**Not wired up:** futures/perpetual curves (`backend/adapters/perp_futures.py`
-is a stub -- the adapter interface supports it, the fetch logic doesn't
-exist).
+**More crowds (built, live, added 2026-09-23):** Futuur and Limitless
+prediction markets; Deribit, OKX and Derive options; Deribit, OKX and
+Hyperliquid futures and perpetuals; the EIA's oil forecast; CFTC
+Commitments of Traders positioning; StockTwits, the crypto Fear & Greed
+index and on-chain MVRV. See "The crowds" below.
 
 ## The four pages
 
@@ -40,8 +42,53 @@ exist).
   alone takes about an hour).
 - **Stock Lookup** -- live four-signal read on any ticker, computed fresh
   per request (a few seconds, not pre-baked).
-- **Three Crowds** -- prediction markets vs. options markets vs. retail
-  attention for BTC/oil/ETH/gold, computed live per request.
+- **Crowds** -- every independent crowd for BTC/ETH/gold/oil side by side:
+  a chart and table of where each price-forecasting crowd puts the price at
+  1 week, 1 month, 3 months and 1 year, plus cards for options, futures and
+  perps, EIA experts, CFTC positioning and retail sentiment. Live per
+  request, cached for a minute (`/api/crowds/{asset}`, built in
+  `backend/crowds.py`). It replaces the old Three Crowds page, whose
+  options side relied on Yahoo ETF chains that had too few liquid strikes.
+
+## The crowds
+
+Every source below is free and needs no key (the EIA's public `DEMO_KEY`
+works; set `EIA_API_KEY` to lift its rate limit). Each was confirmed live
+on 2026-09-23.
+
+| Crowd | Sources | Assets | How it's used |
+|---|---|---|---|
+| Prediction markets | Polymarket, Kalshi, Manifold, **Futuur**, **Limitless** | all four | Point-in-time markets feed the headline forecast; touch ladders go to the touch section |
+| Options | **Deribit**, **OKX**, **Derive** | BTC, ETH | One risk-neutral distribution per expiry from each venue's IV smile (`adapters/options_common.py`), combined by open interest |
+| Futures & perps | **Deribit**, **OKX**, **Hyperliquid** | curve: BTC, ETH; perps: all four | Forward curve with annualized basis; perp funding as a positioning read (`signals/futures.py`) |
+| Experts | **EIA Short-Term Energy Outlook** | oil | Monthly-average WTI and Brent forecast (`signals/eia.py`) |
+| Positioning | **CFTC Commitments of Traders** | all four (COMEX gold, NYMEX WTI, CME BTC/ETH) | Net positions by trader type, ranked against their own 3 years (`signals/cot.py`) |
+| Retail sentiment | **StockTwits**, **Fear & Greed**, **CoinMetrics MVRV**, Wikipedia | all four (F&G, MVRV: crypto) | Mood and attention readings (`signals/sentiment.py`) |
+
+Design decisions worth knowing before changing any of this:
+
+- **Crowds are never blended together.** `build_dashboard()` aggregates
+  one `source_type` at a time. Deribit's BTC open interest is thousands of
+  times Polymarket's volume, so a joint mixture would just be the options
+  curve, and keeping them apart is what makes them comparable at all. The
+  Polymarket-measured calibration corrections apply to prediction markets
+  only.
+- **Not every crowd produces a distribution.** Futures give a forward
+  price, funding and COT give positioning, sentiment gives a mood. Those
+  live in `backend/signals/` and never go through the mixture maths.
+- **Independence varies.** Limitless flags its markets as arbitraged
+  against Polymarket, and the three options venues are held together by
+  arbitrage, so they add depth and redundancy more than new opinions. The
+  genuinely separate crowds are the prediction markets, options/futures
+  traders, EIA analysts, COT positioning and retail sentiment.
+- **Known biases, stated on the page.** Options distributions are
+  risk-neutral (a little wider than real expectations, with the median
+  below the forward); futures forwards include cost of carry; leveraged
+  funds are structurally short CME crypto futures because of the ETF basis
+  trade; StockTwits and Fear & Greed lean bullish.
+- **Not available free:** gold and oil options (Yahoo's GLD/USO chains are
+  too thin and unreliable), CME settlement data, Binance/Bybit (region
+  blocked from some networks), Metaculus (needs a free account token).
 
 ### Adding crude oil: what changed, and what oil currently lacks
 
@@ -158,15 +205,21 @@ backend/
     assets.py          # asset registry: which adapters apply to which ticker
   adapters/
     base.py             # the adapter contract every source implements
-    polymarket.py        # Phase 1, live
-    kalshi.py             # Phase 1, live
-    deribit_options.py     # Phase 2, interface-complete stub
-    perp_futures.py         # Phase 3, interface-complete stub
-    registry.py               # name -> adapter instance lookup
+    polymarket.py, kalshi.py, manifold.py, futuur.py, limitless.py   # prediction markets
+    deribit_options.py, okx_options.py, derive_options.py            # options venues
+    options_common.py   # IV smile -> PriceDistribution (Breeden-Litzenberger)
+    registry.py          # name -> adapter instance lookup
+  signals/             # crowds that aren't distributions
+    futures.py          # forward curve + perp funding
+    eia.py               # EIA oil forecast
+    cot.py                # CFTC positioning
+    sentiment.py           # StockTwits, Fear & Greed, MVRV
   aggregation.py       # the only place that combines distributions into a forecast
   orchestrator.py      # wires registry + adapters + cache + aggregation -> API payload
+  crowds.py            # /api/crowds: every crowd for one asset, side by side
   cache.py              # TTL cache + stale-fallback
-  app.py                 # FastAPI: /api/assets, /api/forecast/{symbol}, serves frontend/dist
+  app.py                 # FastAPI: /api/assets, /api/forecast, /api/crowds, ...; serves frontend/dist
+  tests/                 # offline tests: python3 -m pytest tests
 frontend/               # React + TypeScript + hand-rolled SVG charts (Vite)
 ```
 
@@ -178,7 +231,7 @@ forward price and a sentiment signal. `common/distribution.py`'s
 piecewise probability distribution over price at a fixed future date, plus
 a liquidity-derived weight. `aggregation.py` only ever operates on lists of
 `PriceDistribution` -- it has no idea whether a given one came from
-Polymarket or (once built) Deribit. That's what makes "add a source" mean
+Polymarket or Deribit. That's what makes "add a source" mean
 "write an adapter," never "modify the aggregator."
 
 ### The aggregation math
@@ -296,9 +349,9 @@ principled way to say anything about a date with no active market at all
    `gap_fill_forecasts`.
 
 This is explicitly a baseline model (see `aggregation.py`'s docstring),
-not a claim BTC or oil literally follows GBM -- the same caveat
-`adapters/perp_futures.py`'s design doc already made about using GBM as a
-forecasting tool, now actually wired up for real.
+not a claim BTC or oil literally follows GBM -- the same kind of
+caveat `signals/futures.py` makes about reading a futures forward as a
+forecast.
 
 ### Are the "votes" behind a market actually independent?
 
@@ -367,12 +420,9 @@ derived.
   (Polymarket's "What price will Bitcoin hit in 2026?", Kalshi's
   `KXBTCMAXY`/`KXBTCMINY`) -- real signal, but answering "ever crosses,"
   not "is above, at this date."
-- **Cross-source-type weighting is an open question.** Phase 1 only ever
-  mixes weights within one `source_type` (prediction markets), where both
-  adapters use USD-ish volume, so this doesn't bite yet. Before wiring in
-  Deribit or futures, decide how an options market's open interest and a
-  prediction market's volume should be reconciled into one weight scale --
-  flagged explicitly in `aggregation.py`'s docstring, not assumed solved.
+- **Cross-source-type weighting is deliberately avoided.** Options open
+  interest and prediction-market volume are never put on one weight scale;
+  each crowd is aggregated on its own (see "The crowds" above).
 
 ## Other platforms considered
 

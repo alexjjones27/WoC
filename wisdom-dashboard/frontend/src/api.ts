@@ -1,10 +1,10 @@
 import type {
   AssetInfo,
+  CrowdAsset,
+  CrowdsPayload,
   DashboardPayload,
   SmartMoneyBacktestPayload,
   SmartMoneyPortfolioPayload,
-  ThreeCrowdsAsset,
-  ThreeCrowdsPayload,
   TickerLookupPayload,
 } from "./types";
 
@@ -39,8 +39,8 @@ export async function lookupTicker(ticker: string): Promise<TickerLookupPayload>
   return res.json();
 }
 
-export async function getThreeCrowds(asset: ThreeCrowdsAsset): Promise<ThreeCrowdsPayload> {
-  const res = await fetch(`/api/three-crowds/${asset}`);
-  if (!res.ok) throw new Error(`GET /api/three-crowds/${asset} -> ${res.status}`);
+export async function getCrowds(asset: CrowdAsset): Promise<CrowdsPayload> {
+  const res = await fetch(`/api/crowds/${asset}`);
+  if (!res.ok) throw new Error(`GET /api/crowds/${asset} -> ${res.status}`);
   return res.json();
 }
